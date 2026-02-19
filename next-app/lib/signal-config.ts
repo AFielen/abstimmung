@@ -23,7 +23,7 @@ export function getSignalConfig(): SignalConfig | null {
       return {
         host: url.hostname,
         ...(url.port ? { port: parseInt(url.port, 10) } : {}),
-        path: '/peerjs',
+        path: '/',
         secure: url.protocol === 'https:',
       };
     } catch {
@@ -36,7 +36,7 @@ export function getSignalConfig(): SignalConfig | null {
   return {
     host: window.location.hostname,
     port: 9000,
-    path: '/peerjs',
+    path: '/',
     secure: window.location.protocol === 'https:',
   };
 }
