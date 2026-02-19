@@ -1,0 +1,12 @@
+services:
+  vereinsabstimmung:
+    build: ./next-app
+    ports:
+      - "3334:3000"
+    restart: unless-stopped
+
+  signal-server:
+    build: ./server
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
