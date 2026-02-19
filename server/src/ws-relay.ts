@@ -45,8 +45,20 @@ export class WebSocketRelay {
   private connCounter = 0;
 
   constructor(server: http.Server) {
-    this.wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
+    this.wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
     this.wss.on('connection', (ws) => this.handleConnection(ws));
+
+    // Manually route /ws upgrades to avoid conflicting with PeerJS's upgrade handler.
+    // Using { server, path } would cause ws to abort+destroy sockets for non-/ws paths,
+    // killing PeerJS connections at /peerjs.
+    server.on('upgrade', (request, socket, head) => {
+      const { pathname } = new URL(request.url || '', 'http://d');
+      if (pathname === '/ws') {
+        this.wss.handleUpgrade(request, socket as never, head, (ws) => {
+          this.wss.emit('connection', ws, request);
+        });
+      }
+    });
     this.wss.on('error', (err) => {
       console.error('[WS Relay] Server error:', err.message);
     });
