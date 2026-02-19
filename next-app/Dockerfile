@@ -7,6 +7,10 @@ RUN npm ci
 # Stage 2: Build the application
 FROM node:22-alpine AS builder
 WORKDIR /app
+
+ARG NEXT_PUBLIC_SIGNAL_SERVER_URL
+ENV NEXT_PUBLIC_SIGNAL_SERVER_URL=$NEXT_PUBLIC_SIGNAL_SERVER_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
