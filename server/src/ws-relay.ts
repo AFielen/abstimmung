@@ -44,26 +44,20 @@ export class WebSocketRelay {
   private cleanupTimer: NodeJS.Timeout;
   private connCounter = 0;
 
-  constructor(server: http.Server) {
+  constructor() {
     this.wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
     this.wss.on('connection', (ws) => this.handleConnection(ws));
-
-    // Manually route /ws upgrades to avoid conflicting with PeerJS's upgrade handler.
-    // Using { server, path } would cause ws to abort+destroy sockets for non-/ws paths,
-    // killing PeerJS connections at /peerjs.
-    server.on('upgrade', (request, socket, head) => {
-      const { pathname } = new URL(request.url || '', 'http://d');
-      if (pathname === '/ws') {
-        this.wss.handleUpgrade(request, socket as never, head, (ws) => {
-          this.wss.emit('connection', ws, request);
-        });
-      }
-    });
     this.wss.on('error', (err) => {
       console.error('[WS Relay] Server error:', err.message);
     });
     this.cleanupTimer = setInterval(() => this.cleanupStaleRooms(), CLEANUP_INTERVAL_MS);
-    console.log('[WS Relay] Initialized on /ws');
+    console.log('[WS Relay] Initialized');
+  }
+
+  handleUpgrade(request: http.IncomingMessage, socket: unknown, head: Buffer) {
+    this.wss.handleUpgrade(request, socket as never, head, (ws) => {
+      this.wss.emit('connection', ws, request);
+    });
   }
 
   private generateRoomId(): string {

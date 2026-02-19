@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import { ExpressPeerServer } from 'peer';
+import { WebSocketServer } from 'ws';
 import { WebSocketRelay } from './ws-relay';
 
 const PORT = parseInt(process.env.PORT || '9000', 10);
@@ -25,9 +26,16 @@ app.get('/health', (req, res) => {
 
 const server = http.createServer(app);
 
+// Use createWebSocketServer to prevent PeerJS from auto-registering an upgrade
+// handler on the main server (which would destroy non-/peerjs sockets like /ws).
+let peerWss: WebSocketServer;
 const peerServer = ExpressPeerServer(server, {
   path: '/',
   allow_discovery: false,
+  createWebSocketServer: () => {
+    peerWss = new WebSocketServer({ noServer: true });
+    return peerWss;
+  },
 } as any);
 
 peerServer.on('connection', (client: any) => {
@@ -39,7 +47,21 @@ peerServer.on('disconnect', (client: any) => {
 
 app.use('/', peerServer);
 
-const wsRelay = new WebSocketRelay(server);
+const wsRelay = new WebSocketRelay();
+
+// Single unified upgrade handler — routes WebSocket upgrades to the right handler
+server.on('upgrade', (request, socket, head) => {
+  const { pathname } = new URL(request.url || '', 'http://d');
+  if (pathname === '/ws') {
+    wsRelay.handleUpgrade(request, socket, head);
+  } else if (pathname.startsWith('/peerjs')) {
+    peerWss!.handleUpgrade(request, socket as never, head, (ws) => {
+      peerWss!.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Signal server listening on port ${PORT}`);
