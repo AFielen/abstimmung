@@ -23,7 +23,7 @@ async function createPeerInstance(id?: string) {
   const signalConfig = getSignalConfig();
   const opts = signalConfig ? {
     host: signalConfig.host,
-    port: signalConfig.port,
+    ...(signalConfig.port !== undefined ? { port: signalConfig.port } : {}),
     path: signalConfig.path,
     secure: signalConfig.secure,
   } : {};

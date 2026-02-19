@@ -86,7 +86,7 @@ Wenn die App hinter einem Reverse Proxy oder Cloudflare Tunnel laeuft, muss die 
 
 ```bash
 # Beispiel: Signal-Server unter signal.example.de erreichbar
-NEXT_PUBLIC_SIGNAL_URL=https://signal.example.de npm run build
+NEXT_PUBLIC_SIGNAL_SERVER_URL=https://signal.example.de npm run build
 ```
 
 Ohne diese Variable wird automatisch `window.location.hostname:9000` verwendet (funktioniert fuer lokale Docker-Setups).
@@ -259,7 +259,7 @@ Mehrstufiges System:
 
 | Variable | Beschreibung | Standard |
 |----------|--------------|----------|
-| `NEXT_PUBLIC_SIGNAL_URL` | URL des Signal-Servers (Build-Zeit) | Auto-Detect (`hostname:9000`) |
+| `NEXT_PUBLIC_SIGNAL_SERVER_URL` | URL des Signal-Servers (Build-Zeit) | Auto-Detect (`hostname:9000`) |
 | `PORT` | Port des Signal-Servers | `9000` |
 
 ## Beitragen

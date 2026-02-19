@@ -134,7 +134,7 @@ VereinsabstimmungDRK/
 - **Double-Vote Prevention:** `votedDevices` Set mit `ls:` (localStorage) und `fp:` (fingerprint) Prefixes
 - **Timer:** `timerInterval` Ref mit Auto-Close bei Ablauf
 - **Routing:** URL-Parameter `?vote=<peerId>&mode=server` unterscheidet Presenter von Voter und P2P von Server
-- **Signal-Config:** `NEXT_PUBLIC_SIGNAL_URL` env → Auto-Detect (`hostname:9000`) → PeerJS Cloud Fallback
+- **Signal-Config:** `NEXT_PUBLIC_SIGNAL_SERVER_URL` env → Auto-Detect (`hostname:9000`) → PeerJS Cloud Fallback
 
 ### Important Locations
 
@@ -249,7 +249,7 @@ npm run dev
 ```
 
 **Environment Variables:**
-- `NEXT_PUBLIC_SIGNAL_URL` — Signal-Server URL (nur bei Reverse Proxy / Cloudflare Tunnel noetig)
+- `NEXT_PUBLIC_SIGNAL_SERVER_URL` — Signal-Server URL (nur bei Reverse Proxy / Cloudflare Tunnel noetig)
 - `PORT` — Signal-Server Port (default: 9000)
 
 ### Deployment (Docker)

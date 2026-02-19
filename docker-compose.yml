@@ -1,6 +1,9 @@
 services:
   vereinsabstimmung:
-    build: ./next-app
+    build:
+      context: ./next-app
+      args:
+        NEXT_PUBLIC_SIGNAL_SERVER_URL: https://signal.henryagi.de
     ports:
       - "3334:3000"
     restart: unless-stopped

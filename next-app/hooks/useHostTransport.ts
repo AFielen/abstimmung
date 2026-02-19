@@ -110,7 +110,7 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
         const id = 'drk-' + Math.random().toString(36).substring(2, 18);
         const peerOptions = signalConfig ? {
           host: signalConfig.host,
-          port: signalConfig.port,
+          ...(signalConfig.port !== undefined ? { port: signalConfig.port } : {}),
           path: signalConfig.path,
           secure: signalConfig.secure,
         } : {};
