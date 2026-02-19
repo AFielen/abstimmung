@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
 
 // Mount PeerJS signaling server
 const peerServer = ExpressPeerServer(server, {
-  path: '/peerjs',
+  path: '/',
   allow_discovery: false,
 } as any);
 
@@ -45,7 +45,7 @@ const wsRelay = new WebSocketRelay(server);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Signal server listening on port ${PORT}`);
-  console.log(`  PeerJS signaling: /peerjs`);
+  console.log(`  PeerJS signaling: /peerjs (path: /)`);
   console.log(`  WebSocket relay:  /ws`);
   console.log(`  Health check:     /health`);
 });
