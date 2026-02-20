@@ -353,54 +353,6 @@ function DankeContent() {
           </div>
         </section>
       </div>
-
-      {/* Custom Footer (different from layout footer) */}
-      <footer
-        className="text-center py-8 px-6"
-        style={{ borderTop: "1px solid #E8E8E8", background: "#FFFFFF" }}
-      >
-        <div
-          className="text-[0.8rem] font-semibold uppercase mb-1.5"
-          style={{ color: "#E30613", letterSpacing: "0.1em" }}
-        >
-          Deutsches Rotes Kreuz
-        </div>
-        <p className="text-[0.8rem]" style={{ color: "#999999" }}>
-          Kreisverband St&auml;dteRegion Aachen e.V.
-          <br />
-          <a
-            href="mailto:support@drk-aachen.de"
-            className="no-underline hover:text-[#E30613]"
-            style={{ color: "#666666" }}
-          >
-            support@drk-aachen.de
-          </a>{" "}
-          &middot;{" "}
-          <a
-            href="https://www.drk-aachen.de"
-            className="no-underline hover:text-[#E30613]"
-            style={{ color: "#666666" }}
-          >
-            www.drk-aachen.de
-          </a>
-          <br />
-          <Link
-            href="/impressum"
-            className="no-underline hover:text-[#E30613]"
-            style={{ color: "#666666" }}
-          >
-            Impressum
-          </Link>{" "}
-          &middot;{" "}
-          <Link
-            href="/datenschutz"
-            className="no-underline hover:text-[#E30613]"
-            style={{ color: "#666666" }}
-          >
-            Datenschutz
-          </Link>
-        </p>
-      </footer>
     </div>
   );
 }
