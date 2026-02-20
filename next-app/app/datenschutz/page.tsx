@@ -203,8 +203,8 @@ export default function DatenschutzPage() {
             8. Keine externen Schriftarten oder CDNs
           </h3>
           <p className="mb-2">
-            Alle verwendeten Schriftarten (Source Sans 3, Source Serif 4) werden{" "}
-            <strong>lokal gehostet</strong> und direkt mit der Anwendung ausgeliefert. Es findet{" "}
+            Es werden ausschlie&szlig;lich System-Schriftarten verwendet, die bereits auf Ihrem
+            Ger&auml;t installiert sind. Es findet{" "}
             <strong>keine Verbindung zu Google Fonts</strong> oder anderen Schriftarten-Diensten
             statt. Einzige externe Ressource ist die PeerJS-Bibliothek, die &uuml;ber ein CDN
             (unpkg.com) eingebunden wird.

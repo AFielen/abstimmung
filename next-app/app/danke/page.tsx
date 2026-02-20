@@ -47,7 +47,7 @@ function DankeContent() {
           <h1
             className="text-[2rem] font-semibold mb-3"
             style={{
-              fontFamily: "'Source Serif 4', Georgia, serif",
+              fontFamily: "Georgia, 'Times New Roman', serif",
               letterSpacing: "-0.01em",
               animation: "fade-up 0.5s ease-out 0.1s both",
             }}
@@ -70,7 +70,7 @@ function DankeContent() {
             <div className="text-center">
               <span
                 className="block text-[1.8rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 {votes}
               </span>
@@ -84,7 +84,7 @@ function DankeContent() {
             <div className="text-center">
               <span
                 className="block text-[1.8rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 {participants}
               </span>
@@ -98,7 +98,7 @@ function DankeContent() {
             <div className="text-center">
               <span
                 className="block text-[1.8rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
               >
                 {total}
               </span>
@@ -127,7 +127,7 @@ function DankeContent() {
         >
           <h2
             className="text-[1.4rem] font-semibold mb-2"
-            style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: "#1A1A1A" }}
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#1A1A1A" }}
           >
             Weiterentwicklung unterst&uuml;tzen
           </h2>
@@ -151,7 +151,7 @@ function DankeContent() {
             >
               <span
                 className="block text-[1.5rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: "#1A1A1A" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#1A1A1A" }}
               >
                 15&nbsp;&euro;
               </span>
@@ -172,7 +172,7 @@ function DankeContent() {
             >
               <span
                 className="block text-[1.5rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: "#1A1A1A" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#1A1A1A" }}
               >
                 25&nbsp;&euro;
               </span>
@@ -193,7 +193,7 @@ function DankeContent() {
             >
               <span
                 className="block text-[1.5rem] font-semibold"
-                style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: "#1A1A1A" }}
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#1A1A1A" }}
               >
                 50&nbsp;&euro;
               </span>
@@ -237,7 +237,7 @@ function DankeContent() {
         >
           <h2
             className="text-[1.3rem] font-semibold mb-1.5"
-            style={{ fontFamily: "'Source Serif 4', Georgia, serif", color: "#1A1A1A" }}
+            style={{ fontFamily: "Georgia, 'Times New Roman', serif", color: "#1A1A1A" }}
           >
             Was wir sonst noch entwickeln
           </h2>
