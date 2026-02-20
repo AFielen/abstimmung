@@ -1,0 +1,201 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WebSocketRelay = void 0;
+const ws_1 = require("ws");
+const ROOM_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity
+const CLEANUP_INTERVAL_MS = 60 * 1000;
+const MAX_ROOMS = 100;
+const MAX_VOTERS_PER_ROOM = 300;
+class WebSocketRelay {
+    constructor() {
+        this.rooms = new Map();
+        this.connCounter = 0;
+        this.wss = new ws_1.WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+        this.wss.on('connection', (ws) => this.handleConnection(ws));
+        this.wss.on('error', (err) => {
+            console.error('[WS Relay] Server error:', err.message);
+        });
+        this.cleanupTimer = setInterval(() => this.cleanupStaleRooms(), CLEANUP_INTERVAL_MS);
+        console.log('[WS Relay] Initialized');
+    }
+    handleUpgrade(request, socket, head) {
+        this.wss.handleUpgrade(request, socket, head, (ws) => {
+            this.wss.emit('connection', ws, request);
+        });
+    }
+    generateRoomId() {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        for (let attempt = 0; attempt < 100; attempt++) {
+            let id = '';
+            for (let i = 0; i < 6; i++) {
+                id += chars[Math.floor(Math.random() * chars.length)];
+            }
+            if (!this.rooms.has(id))
+                return id;
+        }
+        throw new Error('Failed to generate unique room ID');
+    }
+    generateConnId() {
+        return `conn-${++this.connCounter}`;
+    }
+    handleConnection(ws) {
+        let member = null;
+        let room = null;
+        ws.on('error', (err) => {
+            console.error('[WS Relay] WebSocket error:', err.message);
+        });
+        ws.on('message', (raw) => {
+            let msg;
+            try {
+                msg = JSON.parse(raw.toString());
+            }
+            catch {
+                this.send(ws, { type: 'error', message: 'Invalid JSON' });
+                return;
+            }
+            switch (msg.type) {
+                case 'create-room': {
+                    if (member || room) {
+                        this.send(ws, { type: 'error', message: 'Already in a room' });
+                        return;
+                    }
+                    if (this.rooms.size >= MAX_ROOMS) {
+                        this.send(ws, { type: 'error', message: 'Server at capacity' });
+                        return;
+                    }
+                    const roomId = this.generateRoomId();
+                    const connId = this.generateConnId();
+                    member = { ws, id: connId, role: 'host' };
+                    room = {
+                        id: roomId,
+                        host: member,
+                        voters: new Map(),
+                        createdAt: Date.now(),
+                        lastActivity: Date.now(),
+                    };
+                    this.rooms.set(roomId, room);
+                    this.send(ws, { type: 'room-created', roomId });
+                    console.log(`[WS Relay] Room created: ${roomId}`);
+                    break;
+                }
+                case 'join-room': {
+                    if (member || room) {
+                        this.send(ws, { type: 'error', message: 'Already in a room' });
+                        return;
+                    }
+                    const targetRoom = this.rooms.get(msg.roomId);
+                    if (!targetRoom || !targetRoom.host) {
+                        this.send(ws, { type: 'error', message: 'Room not found' });
+                        return;
+                    }
+                    if (targetRoom.voters.size >= MAX_VOTERS_PER_ROOM) {
+                        this.send(ws, { type: 'error', message: 'Room is full' });
+                        return;
+                    }
+                    const connId = this.generateConnId();
+                    member = { ws, id: connId, role: 'voter' };
+                    room = targetRoom;
+                    room.voters.set(connId, member);
+                    room.lastActivity = Date.now();
+                    this.send(ws, { type: 'room-joined', connectionId: connId });
+                    if (room.host) {
+                        this.send(room.host.ws, { type: 'voter-connected', connectionId: connId });
+                    }
+                    console.log(`[WS Relay] Voter ${connId} joined room ${msg.roomId} (${room.voters.size} voters)`);
+                    break;
+                }
+                case 'host-msg': {
+                    if (!room || !member || member.role !== 'host')
+                        return;
+                    room.lastActivity = Date.now();
+                    room.voters.forEach((voter) => {
+                        this.send(voter.ws, { type: 'host-data', data: msg.data });
+                    });
+                    break;
+                }
+                case 'host-msg-to': {
+                    if (!room || !member || member.role !== 'host')
+                        return;
+                    room.lastActivity = Date.now();
+                    const voter = room.voters.get(msg.connectionId);
+                    if (voter) {
+                        this.send(voter.ws, { type: 'host-data', data: msg.data });
+                    }
+                    break;
+                }
+                case 'voter-msg': {
+                    if (!room || !member || member.role !== 'voter')
+                        return;
+                    room.lastActivity = Date.now();
+                    if (room.host) {
+                        this.send(room.host.ws, {
+                            type: 'voter-data',
+                            connectionId: member.id,
+                            data: msg.data,
+                        });
+                    }
+                    break;
+                }
+            }
+        });
+        ws.on('close', () => {
+            if (!room || !member)
+                return;
+            if (member.role === 'host') {
+                console.log(`[WS Relay] Host disconnected, closing room ${room.id}`);
+                room.voters.forEach((voter) => {
+                    this.send(voter.ws, { type: 'error', message: 'Host disconnected' });
+                    voter.ws.close();
+                });
+                this.rooms.delete(room.id);
+            }
+            else {
+                console.log(`[WS Relay] Voter ${member.id} disconnected from room ${room.id}`);
+                room.voters.delete(member.id);
+                if (room.host) {
+                    this.send(room.host.ws, { type: 'voter-disconnected', connectionId: member.id });
+                }
+            }
+        });
+    }
+    send(ws, msg) {
+        if (ws.readyState === ws_1.WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify(msg));
+            }
+            catch (err) {
+                console.error('[WS Relay] send error:', err.message);
+            }
+        }
+    }
+    cleanupStaleRooms() {
+        const now = Date.now();
+        this.rooms.forEach((room, id) => {
+            if (now - room.lastActivity > ROOM_TTL_MS) {
+                console.log(`[WS Relay] Cleaning up stale room: ${id}`);
+                room.voters.forEach((voter) => {
+                    this.send(voter.ws, { type: 'error', message: 'Room expired' });
+                    voter.ws.close();
+                });
+                if (room.host) {
+                    this.send(room.host.ws, { type: 'error', message: 'Room expired' });
+                    room.host.ws.close();
+                }
+                this.rooms.delete(id);
+            }
+        });
+    }
+    getRoomCount() {
+        return this.rooms.size;
+    }
+    shutdown() {
+        clearInterval(this.cleanupTimer);
+        this.rooms.forEach((room) => {
+            room.voters.forEach((v) => v.ws.close());
+            if (room.host)
+                room.host.ws.close();
+        });
+        this.wss.close();
+    }
+}
+exports.WebSocketRelay = WebSocketRelay;
