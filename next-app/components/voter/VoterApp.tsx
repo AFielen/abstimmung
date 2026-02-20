@@ -150,6 +150,8 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
           stopTimer();
           transportRef.current.markSessionEnded();
           dispatchRef.current({ type: 'SESSION_ENDED' });
+          // Redirect voter to danke page
+          window.location.href = '/danke';
           break;
         }
 
