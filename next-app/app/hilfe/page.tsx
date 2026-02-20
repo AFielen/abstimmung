@@ -100,7 +100,7 @@ export default function HilfePage() {
       {/* Abstimmungsmodi */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up fade-up-delay-3"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <h3 className="text-base font-bold mb-1" style={{ color: "var(--drk)" }}>
           Abstimmungsmodi
@@ -161,7 +161,7 @@ export default function HilfePage() {
       {/* Versammlungsleiter-Anleitung */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up fade-up-delay-4"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <h3 className="text-base font-bold mb-1" style={{ color: "var(--drk)" }}>
           Anleitung fuer Versammlungsleiter
@@ -203,7 +203,7 @@ export default function HilfePage() {
       {/* Datenschutz & Sicherheit */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up fade-up-delay-5"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <h3 className="text-base font-bold mb-1" style={{ color: "var(--drk)" }}>
           Datenschutz &amp; Sicherheit
@@ -235,7 +235,7 @@ export default function HilfePage() {
       {/* FAQ Accordion */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up fade-up-delay-6"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <h3 className="text-base font-bold mb-4" style={{ color: "var(--drk)" }}>
           Haeufige Fragen
@@ -276,7 +276,7 @@ export default function HilfePage() {
       {/* KI-Agenten */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <div className="flex items-start gap-3">
           <div className="feature-icon shrink-0" style={{ background: "#f3e5f5", color: "#7b1fa2" }}>
@@ -316,7 +316,7 @@ export default function HilfePage() {
       {/* Weitere Informationen */}
       <div
         className="p-6 rounded-[var(--radius)] fade-up"
-        style={{ background: "var(--card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
       >
         <h3 className="text-base font-bold mb-3" style={{ color: "var(--drk)" }}>
           Weitere Informationen

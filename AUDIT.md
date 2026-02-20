@@ -256,3 +256,42 @@ Die **fehlenden Elemente** lassen sich in drei Gruppen einteilen:
 1. **Schnell nachholbar** — `CLAUDE.md`, `not-found.tsx`, `favicon.svg`, DSGVO-Checkliste
 2. **Mittlerer Aufwand** — `/spenden`-Seite, Spenden-Icon im Header/Footer
 3. **Größerer Aufwand** — i18n-System (betrifft alle Texte im gesamten Projekt)
+
+---
+
+## 4. Umgesetzte Änderungen (2026-02-20)
+
+### Abweichungen behoben
+
+| Bereich | Änderung |
+|---------|----------|
+| CSS-Variablen: Farbwerte | Alle Werte an Template angeglichen (`--drk-dark`, `--text`, `--bg`, `--border`, `--success`, `--warning` etc.) |
+| CSS-Variablen: Fehlende | `--drk-bg`, `--text-muted`, `--bg-card`, `--info`, `--success-bg`, `--warning-bg`, `--info-bg`, Schatten-Variablen, Radius-Variablen hinzugefügt |
+| CSS-Variablen: Rename | `--card` → `--bg-card` (inkl. alle Referenzen in hilfe/page.tsx, globals.css) |
+| Typografie | System-Font-Stack statt Source Sans 3 / Source Serif 4. Font-Dateien entfernt. |
+| Utility-CSS-Klassen | `.drk-card`, `.drk-btn-primary`, `.drk-btn-secondary`, `.drk-input`, `.drk-label`, `.drk-fade-in`, `.drk-slide-up`, `.drk-badge-*` hinzugefügt |
+| Header: Link-Wrapper | Titel-Bereich jetzt als `<Link href="/">` (klickbar → Startseite) |
+| Header: Spenden-Icon | HeartIcon-SVG + Link zu `/spenden` hinzugefügt |
+| Footer: Spenden-Link | "Unterstützen"-Link zu `/spenden` ergänzt |
+| Favicon | `favicon.svg` (DRK-Kreuz) erstellt, in Metadata referenziert |
+
+### Fehlende Elemente ergänzt
+
+| Element | Detail |
+|---------|--------|
+| `CLAUDE.md` | Projektspezifische Konventionen im Root erstellt |
+| `/spenden`-Seite | Pflichtseite mit Danke-Box, DRK-Info, 3 Spendenoptionen, Open-Source-Hinweis |
+| `not-found.tsx` | Custom 404-Seite im DRK-Design |
+| `lib/version.ts` | APP_VERSION, APP_NAME, APP_BUILD_DATE |
+| `favicon.svg` | DRK-Kreuz als SVG |
+
+### Bewusst offen gelassen
+
+| Element | Grund |
+|---------|-------|
+| i18n (lib/i18n.ts) | Wird später umgesetzt |
+| Projektstruktur (next-app/) | Architektonisch bedingt (Signal-Server) |
+| Hilfe FAQ (`<details>`) | Bestehende Implementierung ist ausgereifter |
+| tsconfig.json jsx | "react-jsx" ist funktional äquivalent |
+| next.config.ts extras | poweredByHeader/compress sind sinnvolle Erweiterungen |
+| Prettier | Kann separat ergänzt werden |
