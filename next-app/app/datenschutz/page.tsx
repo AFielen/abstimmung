@@ -64,35 +64,41 @@ export default function DatenschutzPage() {
               Keine Analyse- oder Tracking-Dienste (kein Google Analytics, kein Matomo o.&Auml;.)
             </li>
             <li className="mb-1">
-              Keinen eigenen Server &ndash; die gesamte Kommunikation l&auml;uft direkt zwischen
-              den Ger&auml;ten (Peer-to-Peer)
+              Keine Datenbank &ndash; weder auf dem Server noch in der Cloud
             </li>
-            <li className="mb-1">Keine Datenbank</li>
           </ul>
         </div>
 
-        {/* 3. Peer-to-Peer-Kommunikation */}
+        {/* 3. Kommunikation */}
         <div className="mb-6">
           <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
-            3. Peer-to-Peer-Kommunikation (WebRTC / PeerJS)
+            3. Kommunikation zwischen den Ger&auml;ten
           </h3>
           <p className="mb-2">
-            Die Anwendung nutzt <strong>WebRTC</strong> (Web Real-Time Communication) &uuml;ber die
-            Bibliothek <strong>PeerJS</strong> f&uuml;r die Echtzeit-Kommunikation zwischen
-            Versammlungsleiter und Teilnehmern. Dabei werden folgende technische Verbindungen
-            hergestellt:
+            Die Anwendung bietet zwei Kommunikationsmodi. In beiden F&auml;llen werden{" "}
+            <strong>keine Abstimmungsdaten dauerhaft gespeichert</strong>.
+          </p>
+
+          <p className="mb-1 mt-3">
+            <strong>a) P2P-Modus (Peer-to-Peer via WebRTC / PeerJS)</strong>
+          </p>
+          <p className="mb-2">
+            Im P2P-Modus nutzt die Anwendung <strong>WebRTC</strong> (Web Real-Time Communication)
+            &uuml;ber die Bibliothek <strong>PeerJS</strong>. Dabei werden folgende technische
+            Verbindungen hergestellt:
           </p>
           <ul className="ml-6 mb-2 list-disc">
             <li className="mb-1">
-              <strong>PeerJS-Signaling-Server</strong> (0.peerjs.com): Dient ausschlie&szlig;lich
-              dem initialen Verbindungsaufbau zwischen den Ger&auml;ten. Es werden dabei keine
-              Abstimmungsdaten &uuml;bertragen &ndash; lediglich technische
-              Verbindungsinformationen (sog. Signaling).
+              <strong>Eigener Signal-Server</strong>: Dient ausschlie&szlig;lich dem initialen
+              Verbindungsaufbau zwischen den Ger&auml;ten. Es werden dabei keine Abstimmungsdaten
+              &uuml;bertragen &ndash; lediglich technische Verbindungsinformationen (sog. Signaling).
+              Der Signal-Server wird von uns selbst betrieben und befindet sich in Deutschland.
             </li>
             <li className="mb-1">
-              <strong>STUN/TURN-Server</strong> (Google STUN-Server): Werden ben&ouml;tigt, um die
-              direkte Verbindung zwischen Ger&auml;ten herzustellen (NAT-Traversal). Es werden dabei
-              keine inhaltlichen Daten &uuml;bertragen.
+              <strong>STUN-Server</strong>: Werden ben&ouml;tigt, um die direkte Verbindung zwischen
+              Ger&auml;ten herzustellen (NAT-Traversal). Es werden dabei keine inhaltlichen Daten
+              &uuml;bertragen &ndash; lediglich die &ouml;ffentliche IP-Adresse des Ger&auml;ts
+              ermittelt.
             </li>
           </ul>
           <p className="mb-2">
@@ -100,6 +106,32 @@ export default function DatenschutzPage() {
             Stimmen, Ergebnisse) <strong>direkt zwischen den Ger&auml;ten</strong> &uuml;ber einen
             verschl&uuml;sselten WebRTC-DataChannel &ndash; ohne Umweg &uuml;ber einen Server.
           </p>
+
+          <p className="mb-1 mt-3">
+            <strong>b) Server-Modus (WebSocket-Relay)</strong>
+          </p>
+          <p className="mb-2">
+            Wenn direkte P2P-Verbindungen nicht m&ouml;glich sind (z.B. durch Firewalls),
+            kann der Server-Modus verwendet werden. In diesem Modus werden alle Nachrichten
+            &uuml;ber unseren Signal-Server als Vermittler weitergeleitet:
+          </p>
+          <ul className="ml-6 mb-2 list-disc">
+            <li className="mb-1">
+              Der Server leitet Nachrichten ausschlie&szlig;lich im Arbeitsspeicher weiter &ndash;{" "}
+              <strong>ohne Speicherung auf der Festplatte</strong>
+            </li>
+            <li className="mb-1">
+              Es gibt keine Datenbank und keine Logfiles mit Abstimmungsinhalten
+            </li>
+            <li className="mb-1">
+              Nach Beendigung der Versammlung oder Trennung aller Verbindungen werden s&auml;mtliche
+              Daten im Arbeitsspeicher gel&ouml;scht
+            </li>
+            <li className="mb-1">
+              Der Signal-Server wird von uns selbst betrieben, befindet sich in Deutschland und
+              ist als Open-Source-Software &ouml;ffentlich einsehbar
+            </li>
+          </ul>
         </div>
 
         {/* 4. Anonymitat der Abstimmung */}
@@ -177,23 +209,31 @@ export default function DatenschutzPage() {
         {/* 7. Hosting */}
         <div className="mb-6">
           <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
-            7. Hosting (GitHub Pages)
+            7. Hosting und Infrastruktur
           </h3>
           <p className="mb-2">
-            Die Anwendung wird &uuml;ber <strong>GitHub Pages</strong> (GitHub Inc., 88 Colin P
-            Kelly Jr St, San Francisco, CA 94107, USA) bereitgestellt. GitHub erhebt dabei ggf.
+            Die Anwendung und der Signal-Server werden bei{" "}
+            <strong>Hostinger</strong> (Hostinger International Ltd.) auf einem{" "}
+            <strong>Server in Deutschland</strong> betrieben. Hostinger erhebt dabei ggf.
             technische Zugriffsdaten (IP-Adresse, Zeitstempel, aufgerufene Seite) in
-            Server-Logfiles. N&auml;heres regelt die{" "}
+            Server-Logfiles.
+          </p>
+          <p className="mb-2">
+            Zus&auml;tzlich nutzen wir <strong>Cloudflare</strong> (Cloudflare Inc., 101 Townsend
+            St, San Francisco, CA 94107, USA) als Content-Delivery-Network (CDN) und
+            DDoS-Schutz. Cloudflare verarbeitet dabei technische Verbindungsdaten
+            (IP-Adresse, Zeitstempel) zur Auslieferung der Anwendung und zum Schutz vor
+            Angriffen. N&auml;heres regelt die{" "}
             <a
-              href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement"
+              href="https://www.cloudflare.com/de-de/privacypolicy/"
               target="_blank"
               rel="noopener noreferrer"
               className="no-underline hover:underline"
               style={{ color: "var(--drk)" }}
             >
-              Datenschutzerkl&auml;rung von GitHub
+              Datenschutzerkl&auml;rung von Cloudflare
             </a>
-            . Wir haben keinen Einfluss auf diese Datenerhebung durch GitHub.
+            .
           </p>
         </div>
 
@@ -203,11 +243,12 @@ export default function DatenschutzPage() {
             8. Keine externen Schriftarten oder CDNs
           </h3>
           <p className="mb-2">
-            Es werden ausschlie&szlig;lich System-Schriftarten verwendet, die bereits auf Ihrem
-            Ger&auml;t installiert sind. Es findet{" "}
-            <strong>keine Verbindung zu Google Fonts</strong> oder anderen Schriftarten-Diensten
-            statt. Einzige externe Ressource ist die PeerJS-Bibliothek, die &uuml;ber ein CDN
-            (unpkg.com) eingebunden wird.
+            Alle verwendeten Schriftarten sind <strong>lokal auf unserem Server</strong> gehostet
+            und werden direkt mit der Anwendung ausgeliefert. Es findet{" "}
+            <strong>keine Verbindung zu Google Fonts</strong> oder anderen externen
+            Schriftarten-Diensten statt. Ebenso werden alle JavaScript-Bibliotheken (einschlie&szlig;lich
+            PeerJS) direkt mit der Anwendung ausgeliefert &ndash; es werden{" "}
+            <strong>keine externen CDNs</strong> eingebunden.
           </p>
         </div>
 
