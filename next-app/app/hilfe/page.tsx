@@ -26,8 +26,32 @@ const faqItems = [
   },
 ];
 
+const serverFaqItems = [
+  {
+    q: "Was ist der Server-Modus und wann brauche ich ihn?",
+    a: "In vielen Netzwerken (z.B. in Kreisgeschaeftsstellen oder Veranstaltungsorten) blockieren Firewalls direkte Verbindungen zwischen Geraeten. Wenn der P2P-Modus nicht funktioniert, nutzen Sie den Server-Modus. Dabei laeuft die gesamte Kommunikation ueber unseren Signal-Server als Vermittler \u2014 alle Geraete brauchen nur eine ausgehende Verbindung, die fast jede Firewall durchlaesst.",
+  },
+  {
+    q: "Wie funktioniert der Server-Modus technisch?",
+    a: "Der Versammlungsleiter und alle Teilnehmer verbinden sich per WebSocket mit dem Signal-Server. Der Server leitet Nachrichten (Abstimmung starten, Stimme abgeben, Ergebnisse) zwischen den Geraeten weiter \u2014 wie ein Postbote, der Briefe zustellt, ohne sie zu lesen.",
+  },
+  {
+    q: "Werden meine Abstimmungsdaten auf dem Server gespeichert?",
+    a: "Nein. Der Server speichert keine Daten auf der Festplatte \u2014 weder Abstimmungsergebnisse noch persoenliche Informationen. Im Arbeitsspeicher existieren nur die aktiven Verbindungen und Raum-Zuordnungen. Sobald die Versammlung beendet wird oder alle Verbindungen getrennt werden, ist alles weg. Bei einem Neustart des Servers wird der Arbeitsspeicher komplett zurueckgesetzt.",
+  },
+  {
+    q: "Ist der Server-Modus weniger sicher als P2P?",
+    a: "Der Unterschied: Im P2P-Modus fliessen Daten direkt zwischen den Geraeten, im Server-Modus passieren sie den Signal-Server. Der Server sieht die Nachrichten, speichert sie aber nicht und wertet sie nicht aus. Die Abstimmung bleibt anonym \u2014 es werden keine persoenlichen Daten erhoben. Der gesamte Quellcode ist Open Source und kann jederzeit eingesehen werden.",
+  },
+  {
+    q: "Was passiert mit den Daten nach der Versammlung?",
+    a: "Nach der Versammlung existieren keinerlei Daten auf dem Server. Es gibt keine Datenbank, keine Logfiles mit Abstimmungsinhalten und keine Moeglichkeit, vergangene Abstimmungen zu rekonstruieren. Die einzige Aufzeichnung ist das PDF-Protokoll, das der Versammlungsleiter lokal auf seinem Geraet exportieren kann.",
+  },
+];
+
 export default function HilfePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openServerFaq, setOpenServerFaq] = useState<number | null>(null);
 
   return (
     <div className="max-w-[900px] w-full mx-auto px-4 py-6 space-y-4">
@@ -264,6 +288,47 @@ export default function HilfePage() {
                 </svg>
               </button>
               {openFaq === i && (
+                <p className="text-sm pb-3 -mt-1" style={{ color: "var(--text-light)" }}>
+                  {item.a}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Server-Modus FAQ */}
+      <div
+        className="p-6 rounded-[var(--radius)] fade-up"
+        style={{ background: "var(--bg-card)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+      >
+        <h3 className="text-base font-bold mb-4" style={{ color: "var(--drk)" }}>
+          Server-Modus
+        </h3>
+        <div>
+          {serverFaqItems.map((item, i) => (
+            <div key={i} style={{ borderBottom: i < serverFaqItems.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <button
+                onClick={() => setOpenServerFaq(openServerFaq === i ? null : i)}
+                className="w-full flex items-center justify-between gap-3 py-3 text-left"
+              >
+                <span className="text-sm font-medium" style={{ color: "var(--text)" }}>{item.q}</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--text-light)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 transition-transform"
+                  style={{ transform: openServerFaq === i ? "rotate(180deg)" : "rotate(0)" }}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              {openServerFaq === i && (
                 <p className="text-sm pb-3 -mt-1" style={{ color: "var(--text-light)" }}>
                   {item.a}
                 </p>
