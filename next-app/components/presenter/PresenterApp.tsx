@@ -1,6 +1,7 @@
 'use client';
 
 import { useReducer, useRef, useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type {
   SessionMode,
   TransportMode,
@@ -31,6 +32,7 @@ import InfoBox from './InfoBox';
 export default function PresenterApp() {
   const [state, dispatch] = useReducer(presenterReducer, initialPresenterState);
   const [showEndModal, setShowEndModal] = useState(false);
+  const router = useRouter();
 
   // Refs for mutable tracking that must survive across re-renders
   const votedDevices = useRef<Set<string>>(new Set());
@@ -404,6 +406,12 @@ export default function PresenterApp() {
 
   function handleEndSession() {
     stopTimer();
+
+    // Collect stats before resetting
+    const totalVotes = state.history.length;
+    const totalParticipants = state.connectedCount;
+    const totalCast = state.history.reduce((sum, r) => sum + r.totalCast, 0);
+
     transport.broadcast({ type: 'session-ended' });
     transport.destroy();
     // Also destroy the inactive transport
@@ -414,6 +422,14 @@ export default function PresenterApp() {
     }
     dispatch({ type: 'RESET' });
     setShowEndModal(false);
+
+    // Navigate to danke page with session stats
+    const params = new URLSearchParams({
+      votes: String(totalVotes),
+      participants: String(totalParticipants),
+      total: String(totalCast),
+    });
+    router.push(`/danke?${params.toString()}`);
   }
 
   async function handleExportPdf() {
