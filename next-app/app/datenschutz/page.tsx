@@ -243,10 +243,11 @@ export default function DatenschutzPage() {
             8. Keine externen Schriftarten oder CDNs
           </h3>
           <p className="mb-2">
-            Alle verwendeten Schriftarten sind <strong>lokal auf unserem Server</strong> gehostet
-            und werden direkt mit der Anwendung ausgeliefert. Es findet{" "}
-            <strong>keine Verbindung zu Google Fonts</strong> oder anderen externen
-            Schriftarten-Diensten statt. Ebenso werden alle JavaScript-Bibliotheken (einschlie&szlig;lich
+            Diese Anwendung verwendet ausschlie&szlig;lich{" "}
+            <strong>System-Schriftarten</strong>, die bereits auf Ihrem Ger&auml;t
+            vorinstalliert sind. Es werden <strong>keine Schriftarten von externen
+            Servern</strong> geladen &ndash; weder von Google Fonts noch von anderen
+            Diensten. Ebenso werden alle JavaScript-Bibliotheken (einschlie&szlig;lich
             PeerJS) direkt mit der Anwendung ausgeliefert &ndash; es werden{" "}
             <strong>keine externen CDNs</strong> eingebunden.
           </p>
