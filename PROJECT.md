@@ -56,8 +56,11 @@ Digitales Abstimmungssystem fuer Vereinsversammlungen des Deutschen Roten Kreuze
 - Branding: DRK-Kopfbalken, farbige Ergebnisbalken, Seitenzahlen
 
 ### Infrastructure
-- Hosting: Docker on VPS (oder GitHub Pages fuer Original)
-- Deployment: `docker compose up -d --build` (2 Services: App + Signal-Server)
+- Hosting: Docker on VPS (Hostinger, Deutschland)
+- Reverse Proxy: Caddy (separater Container, SSL/TLS via Let's Encrypt)
+- Domains: `drk-abstimmung.de` (App), `signal.drk-abstimmung.de` (Signal-Server)
+- Docker-Netzwerk: `caddy-net` (external)
+- Deployment: `docker compose up -d --build` (2 Services: abstimmung + peerjs-signal)
 - Images: Node 22 Alpine, Multi-Stage Build
 
 ### Development
@@ -221,7 +224,7 @@ VereinsabstimmungDRK/
 - [ ] End-to-End Testing
 - [ ] Barrierefreiheit (ARIA, Keyboard Navigation)
 - [ ] Dark Mode
-- [ ] HTTPS-Setup auf VPS
+- [x] HTTPS-Setup auf VPS (Caddy Reverse Proxy mit Let's Encrypt)
 - [ ] Performance-Optimierung bei 100+ Teilnehmern
 
 ### Known Issues
@@ -249,7 +252,7 @@ npm run dev
 ```
 
 **Environment Variables:**
-- `NEXT_PUBLIC_SIGNAL_SERVER_URL` — Signal-Server URL (nur bei Reverse Proxy / Cloudflare Tunnel noetig)
+- `SIGNAL_URL` — Signal-Server URL (wird als Build-Arg an docker-compose uebergeben)
 - `PORT` — Signal-Server Port (default: 9000)
 
 ### Deployment (Docker)
@@ -259,7 +262,7 @@ npm run dev
 docker compose up -d --build
 ```
 
-**Ports:** 3334 (App → Container 3000), 9000 (Signal-Server)
+**Container:** `abstimmung` (Port 3000), `peerjs-signal` (Port 9000) — nur intern im Docker-Netzwerk `caddy-net` erreichbar
 
 ### Original-App (GitHub Pages)
 

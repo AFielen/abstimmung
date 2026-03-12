@@ -60,9 +60,16 @@ cd VereinsabstimmungDRK
 docker compose up -d --build
 ```
 
-Startet zwei Services:
-- **Vereinsabstimmung** (Next.js): http://localhost:3334
-- **Signal-Server** (PeerJS + WebSocket-Relay): http://localhost:9000
+Startet zwei Services (nur intern im Docker-Netzwerk erreichbar):
+- **abstimmung** (Next.js): intern Port 3000
+- **peerjs-signal** (PeerJS + WebSocket-Relay): intern Port 9000
+
+Fuer lokale Entwicklung mit Port-Mapping:
+```bash
+docker compose --profile dev up -d --build
+```
+- http://localhost:3000 (App)
+- http://localhost:9000 (Signal-Server)
 
 ### Lokal entwickeln
 
@@ -80,16 +87,26 @@ npm install
 npm run dev
 ```
 
-### Cloudflare Tunnel / Reverse Proxy
+### Produktion (hinter Caddy Reverse Proxy)
 
-Wenn die App hinter einem Reverse Proxy oder Cloudflare Tunnel laeuft, muss die Signal-Server-URL als Build-Variable gesetzt werden:
+Die App laeuft in Produktion hinter einem Caddy Reverse Proxy, der SSL/TLS terminiert:
 
 ```bash
-# Beispiel: Signal-Server unter signal.example.de erreichbar
-NEXT_PUBLIC_SIGNAL_SERVER_URL=https://signal.example.de npm run build
+# .env anlegen (siehe .env.example)
+cp .env.example .env
+
+# Docker-Netzwerk anlegen (einmalig)
+docker network create caddy-net
+
+# Starten
+docker compose up -d --build
 ```
 
-Ohne diese Variable wird automatisch `window.location.hostname:9000` verwendet (funktioniert fuer lokale Docker-Setups).
+Die Container sind nur intern im Docker-Netzwerk `caddy-net` erreichbar. Caddy (separater Container) leitet Requests weiter:
+- `drk-abstimmung.de` → `abstimmung:3000`
+- `signal.drk-abstimmung.de` → `peerjs-signal:9000`
+
+Die Signal-Server-URL wird ueber die Umgebungsvariable `SIGNAL_URL` konfiguriert (siehe `.env.example`). Ohne diese Variable wird automatisch `window.location.hostname:9000` verwendet (funktioniert fuer lokale Docker-Setups).
 
 ## Abstimmungsmodi
 
@@ -259,8 +276,9 @@ Mehrstufiges System:
 
 | Variable | Beschreibung | Standard |
 |----------|--------------|----------|
-| `NEXT_PUBLIC_SIGNAL_SERVER_URL` | URL des Signal-Servers (Build-Zeit) | Auto-Detect (`hostname:9000`) |
-| `PORT` | Port des Signal-Servers | `9000` |
+| `SIGNAL_URL` | URL des Signal-Servers (wird als Build-Arg uebergeben) | `https://signal.drk-abstimmung.de` |
+| `APP_URL` | URL der App (Referenz) | `https://drk-abstimmung.de` |
+| `PORT` | Port des Signal-Servers (intern) | `9000` |
 
 ## Beitragen
 

@@ -9,7 +9,7 @@ export interface SignalConfig {
  * Resolve PeerJS signaling server config.
  *
  * Priority:
- * 1. NEXT_PUBLIC_SIGNAL_SERVER_URL env (e.g. "https://signal.henryagi.de")
+ * 1. NEXT_PUBLIC_SIGNAL_SERVER_URL env (e.g. "https://signal.drk-abstimmung.de")
  * 2. Auto-detect: same hostname, port 9000
  * 3. null → PeerJS Cloud fallback
  */
