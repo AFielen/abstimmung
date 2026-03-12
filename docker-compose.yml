@@ -1,15 +1,55 @@
 services:
-  vereinsabstimmung:
+  abstimmung:
+    container_name: abstimmung
     build:
       context: ./next-app
       args:
-        NEXT_PUBLIC_SIGNAL_SERVER_URL: https://signal.henryagi.de
-    ports:
-      - "3334:3000"
+        NEXT_PUBLIC_SIGNAL_SERVER_URL: ${SIGNAL_URL:-https://signal.drk-abstimmung.de}
     restart: unless-stopped
+    networks:
+      - caddy-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/', (r) => { if (r.statusCode !== 200) process.exit(1) })"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
 
-  signal-server:
+  peerjs-signal:
+    container_name: peerjs-signal
+    build: ./server
+    restart: unless-stopped
+    networks:
+      - caddy-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:9000/health', (r) => { if (r.statusCode !== 200) process.exit(1) })"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  # Dev profile: expose ports for local development without Caddy
+  abstimmung-dev:
+    container_name: abstimmung-dev
+    build:
+      context: ./next-app
+      args:
+        NEXT_PUBLIC_SIGNAL_SERVER_URL: ${SIGNAL_URL:-http://localhost:9000}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  peerjs-signal-dev:
+    container_name: peerjs-signal-dev
     build: ./server
     ports:
       - "9000:9000"
     restart: unless-stopped
+    profiles:
+      - dev
+
+networks:
+  caddy-net:
+    external: true

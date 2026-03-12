@@ -219,21 +219,10 @@ export default function DatenschutzPage() {
             Server-Logfiles.
           </p>
           <p className="mb-2">
-            Zus&auml;tzlich nutzen wir <strong>Cloudflare</strong> (Cloudflare Inc., 101 Townsend
-            St, San Francisco, CA 94107, USA) als Content-Delivery-Network (CDN) und
-            DDoS-Schutz. Cloudflare verarbeitet dabei technische Verbindungsdaten
-            (IP-Adresse, Zeitstempel) zur Auslieferung der Anwendung und zum Schutz vor
-            Angriffen. N&auml;heres regelt die{" "}
-            <a
-              href="https://www.cloudflare.com/de-de/privacypolicy/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="no-underline hover:underline"
-              style={{ color: "var(--drk)" }}
-            >
-              Datenschutzerkl&auml;rung von Cloudflare
-            </a>
-            .
+            Die SSL/TLS-Verschl&uuml;sselung wird durch einen{" "}
+            <strong>Caddy Reverse Proxy</strong> auf dem gleichen Server bereitgestellt.
+            Es werden keine externen CDN- oder DDoS-Schutzdienste eingesetzt.
+            Alle Daten verbleiben auf unserem Server in Deutschland.
           </p>
         </div>
 

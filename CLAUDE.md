@@ -125,12 +125,60 @@ abstimmung/
 
 ## Deployment
 
+### Architektur (Produktion)
+
+```
+Internet
+  │
+  ▼
+Caddy (separater Container, nicht Teil dieses Repos)
+  ├── drk-abstimmung.de        → abstimmung:3000
+  └── signal.drk-abstimmung.de → peerjs-signal:9000
+  │
+  ▼
+Docker-Netzwerk "caddy-net" (external: true)
+  ├── abstimmung        (Next.js App, Port 3000)
+  └── peerjs-signal     (PeerJS + WebSocket Relay, Port 9000)
+```
+
+- **Caddy** laeuft als separater Container und kuemmert sich um SSL/TLS (automatische Let's Encrypt Zertifikate)
+- **Kein Cloudflare Tunnel** — direkter Zugriff ueber Caddy Reverse Proxy
+- **Keine Ports nach aussen** — Container kommunizieren nur ueber das Docker-Netzwerk `caddy-net`
+- Docker-Netzwerk `caddy-net` muss vorher extern angelegt werden: `docker network create caddy-net`
+
+### Domains
+
+| Domain | Service | Container |
+|--------|---------|-----------|
+| `drk-abstimmung.de` | Next.js App | `abstimmung:3000` |
+| `signal.drk-abstimmung.de` | PeerJS + WS-Relay | `peerjs-signal:9000` |
+
+### Umgebungsvariablen
+
+Siehe `.env.example` fuer alle Variablen. Wichtig:
+
+| Variable | Beschreibung | Standard |
+|----------|--------------|----------|
+| `SIGNAL_URL` | Signal-Server URL (wird als Build-Arg uebergeben) | `https://signal.drk-abstimmung.de` |
+| `APP_URL` | App-URL (Referenz) | `https://drk-abstimmung.de` |
+| `PORT` | Signal-Server Port (intern) | `9000` |
+
+### Docker-Befehle
+
+```bash
+# Produktion (hinter Caddy)
+docker compose up -d --build
+
+# Lokale Entwicklung (mit Port-Mapping, ohne Caddy)
+docker compose --profile dev up -d --build
+```
+
 ### Server-Variante (Docker)
 
 ```
 next.config.ts: output: 'standalone'
 Docker: node:22-alpine, Multi-Stage, non-root user
-docker-compose.yml: 2 Services (vereinsabstimmung:3334, signal-server:9000)
+docker-compose.yml: 2 Prod-Services (abstimmung, peerjs-signal) + 2 Dev-Services (mit Ports)
 ```
 
 ---
