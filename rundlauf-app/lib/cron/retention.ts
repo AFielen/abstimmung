@@ -12,9 +12,15 @@
  *
  * Aufruf: `tsx lib/cron/retention.ts`
  */
-import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { auditLog, eligibleVoters, resolutions, votes } from "@/lib/db/schema";
+import {
+  agendaItems,
+  auditLog,
+  eligibleVoters,
+  resolutions,
+  votes,
+} from "@/lib/db/schema";
 
 const ANON_MARKER = "anonymisiert";
 
@@ -38,10 +44,17 @@ async function anonymizeResolution(resolutionId: string, tenantId: string) {
     .set({ nameSnapshot: ANON_MARKER, emailSnapshot: ANON_MARKER })
     .where(eq(eligibleVoters.resolutionId, resolutionId));
 
-  await db
-    .update(votes)
-    .set({ ipHash: null, userAgentHash: null })
-    .where(eq(votes.resolutionId, resolutionId));
+  const topRows = await db
+    .select({ id: agendaItems.id })
+    .from(agendaItems)
+    .where(eq(agendaItems.resolutionId, resolutionId));
+  const topIds = topRows.map((t) => t.id);
+  if (topIds.length > 0) {
+    await db
+      .update(votes)
+      .set({ ipHash: null, userAgentHash: null })
+      .where(inArray(votes.agendaItemId, topIds));
+  }
 
   await db.insert(auditLog).values({
     action: "retention.anonymized",

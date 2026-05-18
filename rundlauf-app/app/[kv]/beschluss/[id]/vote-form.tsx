@@ -9,6 +9,7 @@ const initial: VoteState = { ok: false };
 export function VoteForm({
   kv,
   resolutionId,
+  agendaItemId,
   options,
   currentOptionId,
   mode,
@@ -16,6 +17,7 @@ export function VoteForm({
 }: {
   kv: string;
   resolutionId: string;
+  agendaItemId: string;
   options: ResolutionOption[];
   currentOptionId: string | null;
   mode: "aenderbar" | "fest";
@@ -27,25 +29,28 @@ export function VoteForm({
   if (mode === "fest" && alreadyVoted) {
     return (
       <div
-        className="rounded-lg p-4 text-sm"
+        className="rounded-lg p-3 text-sm"
         style={{ background: "var(--success-bg)", color: "var(--success)" }}
       >
-        Deine Stimme wurde abgegeben und ist unwiderruflich. Aktuell:{" "}
-        <strong>{options.find((o) => o.id === currentOptionId)?.label ?? currentOptionId}</strong>
+        Stimme abgegeben (unwiderruflich):{" "}
+        <strong>
+          {options.find((o) => o.id === currentOptionId)?.label ?? currentOptionId}
+        </strong>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="kv" value={kv} />
       <input type="hidden" name="resolutionId" value={resolutionId} />
+      <input type="hidden" name="agendaItemId" value={agendaItemId} />
 
       <div className="flex flex-col gap-2">
         {options.map((o) => (
           <label
             key={o.id}
-            className="flex items-center gap-3 rounded-xl border p-3 cursor-pointer hover:bg-gray-50"
+            className="flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer hover:bg-gray-50"
             style={{ borderColor: selected === o.id ? "var(--drk)" : "var(--border)" }}
           >
             <input
@@ -75,13 +80,13 @@ export function VoteForm({
         </div>
       ) : null}
 
-      <button type="submit" className="drk-btn-primary" disabled={pending || !selected}>
+      <button type="submit" className="drk-btn-primary self-start" disabled={pending || !selected}>
         {pending
           ? "Speichere …"
           : alreadyVoted
             ? "Stimme ändern"
             : mode === "fest"
-              ? "Stimme verbindlich abgeben"
+              ? "Verbindlich abgeben"
               : "Stimme abgeben"}
       </button>
 

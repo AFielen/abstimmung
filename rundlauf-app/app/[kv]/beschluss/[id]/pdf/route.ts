@@ -1,9 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { db } from "@/lib/db";
-import { bodies, eligibleVoters, organizations, resolutions, users, votes } from "@/lib/db/schema";
+import {
+  agendaItems,
+  attachments,
+  bodies,
+  eligibleVoters,
+  organizations,
+  resolutions,
+  users,
+  votes,
+} from "@/lib/db/schema";
 import { buildProtokollPdf } from "@/lib/pdf";
 import { logAudit } from "@/lib/audit";
 import { requireTenantContext } from "@/lib/tenant";
@@ -22,8 +31,6 @@ async function persistProtokoll(
     const file = join(dir, `${resolutionId}.pdf`);
     await fs.writeFile(file, buf);
   } catch (e) {
-    // Persistenz ist optional – fehlende Schreibrechte im Dev sollen den Download
-    // nicht blockieren.
     console.warn("[pdf] Konnte Protokoll nicht persistieren:", e);
   }
 }
@@ -42,6 +49,12 @@ export async function GET(
     return new NextResponse("Beschluss nicht gefunden", { status: 404 });
   }
 
+  const tops = await db
+    .select()
+    .from(agendaItems)
+    .where(eq(agendaItems.resolutionId, r.id))
+    .orderBy(asc(agendaItems.ordinal));
+
   const eligible = await db
     .select({
       userId: eligibleVoters.userId,
@@ -52,15 +65,32 @@ export async function GET(
     .from(eligibleVoters)
     .where(eq(eligibleVoters.resolutionId, r.id));
 
-  const voteRows = await db
+  const topIds = tops.map((t) => t.id);
+  const voteRows =
+    topIds.length === 0
+      ? []
+      : await db
+          .select({
+            userId: votes.userId,
+            agendaItemId: votes.agendaItemId,
+            optionId: votes.optionId,
+            submittedAt: votes.submittedAt,
+            updatedAt: votes.updatedAt,
+          })
+          .from(votes)
+          .where(inArray(votes.agendaItemId, topIds));
+
+  const attRows = await db
     .select({
-      userId: votes.userId,
-      optionId: votes.optionId,
-      submittedAt: votes.submittedAt,
-      updatedAt: votes.updatedAt,
+      id: attachments.id,
+      filename: attachments.filename,
+      sizeBytes: attachments.sizeBytes,
+      sha256: attachments.sha256,
+      agendaItemId: attachments.agendaItemId,
     })
-    .from(votes)
-    .where(eq(votes.resolutionId, r.id));
+    .from(attachments)
+    .where(eq(attachments.resolutionId, r.id))
+    .orderBy(asc(attachments.uploadedAt));
 
   const creator = (
     await db
@@ -73,10 +103,7 @@ export async function GET(
   const bodyInfo = r.bodyId
     ? (
         await db
-          .select({
-            name: bodies.name,
-            organizationName: organizations.name,
-          })
+          .select({ name: bodies.name, organizationName: organizations.name })
           .from(bodies)
           .leftJoin(organizations, eq(organizations.id, bodies.organizationId))
           .where(eq(bodies.id, r.bodyId))
@@ -88,12 +115,13 @@ export async function GET(
     tenant: ctx.tenant,
     resolution: r,
     createdBy: creator,
+    agendaItems: tops,
     eligible,
     votes: voteRows,
+    attachments: attRows,
     body: bodyInfo,
   });
 
-  // Persistieren (best-effort), wenn Beschluss abgeschlossen ist
   if (r.status === "abgeschlossen" || r.status === "zurueckgezogen") {
     await persistProtokoll(ctx.tenant.slug, r.id, buf);
   }

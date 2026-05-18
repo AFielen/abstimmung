@@ -124,24 +124,29 @@ export async function sendResolutionInvite(opts: {
   resolutionTitle: string;
   resolutionLink: string;
   fristEnde: Date;
+  topCount?: number;
 }) {
   const fristStr = opts.fristEnde.toLocaleString("de-DE", {
     dateStyle: "long",
     timeStyle: "short",
   });
-  const text = `Hallo,\n\nim Kreisverband "${opts.tenantName}" wurde ein neuer Umlaufbeschluss eröffnet:\n\n"${opts.resolutionTitle}"\n\nFrist: ${fristStr}\n\nZum Abstimmen:\n${opts.resolutionLink}`;
+  const topInfo =
+    typeof opts.topCount === "number"
+      ? `${opts.topCount} Beschlussvorlage${opts.topCount === 1 ? "" : "n"} · `
+      : "";
+  const text = `Hallo,\n\nim Kreisverband "${opts.tenantName}" wurde ein neues Umlaufverfahren eröffnet:\n\n"${opts.resolutionTitle}"\n\n${topInfo}Frist: ${fristStr}\n\nZum Abstimmen:\n${opts.resolutionLink}`;
   const html = HTML_WRAPPER(
-    `Neuer Umlaufbeschluss: ${opts.resolutionTitle}`,
-    `<p>Im Kreisverband <strong>${opts.tenantName}</strong> wurde ein neuer Umlaufbeschluss eröffnet:</p>
+    `Neues Umlaufverfahren: ${opts.resolutionTitle}`,
+    `<p>Im Kreisverband <strong>${opts.tenantName}</strong> wurde ein neues Umlaufverfahren eröffnet:</p>
      <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
        <strong>${opts.resolutionTitle}</strong><br/>
-       Frist: ${fristStr}
+       ${topInfo}Frist: ${fristStr}
      </p>
      <p style="margin: 24px 0;"><a href="${opts.resolutionLink}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Jetzt abstimmen</a></p>`,
   );
   await sendMail({
     to: opts.to,
-    subject: `Umlaufbeschluss: ${opts.resolutionTitle}`,
+    subject: `Umlaufverfahren: ${opts.resolutionTitle}`,
     text,
     html,
   });

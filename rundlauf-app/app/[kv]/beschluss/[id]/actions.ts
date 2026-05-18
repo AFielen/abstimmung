@@ -2,18 +2,28 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { eligibleVoters, resolutions, votes } from "@/lib/db/schema";
-import { computeResult, isPastDeadline, parseOptions } from "@/lib/resolution";
-import { requireTenantContext, requireAdmin } from "@/lib/tenant";
+import {
+  agendaItems,
+  eligibleVoters,
+  resolutions,
+  votes,
+} from "@/lib/db/schema";
+import {
+  computeAgendaItemResult,
+  isPastDeadline,
+  parseOptions,
+} from "@/lib/resolution";
+import { requireAdmin, requireTenantContext } from "@/lib/tenant";
 
 const voteSchema = z.object({
   kv: z.string().min(1),
   resolutionId: z.string().uuid(),
+  agendaItemId: z.string().uuid(),
   optionId: z.string().min(1).max(64),
 });
 
@@ -41,6 +51,7 @@ export async function submitVote(
   const parsed = voteSchema.safeParse({
     kv: formData.get("kv"),
     resolutionId: formData.get("resolutionId"),
+    agendaItemId: formData.get("agendaItemId"),
     optionId: formData.get("optionId"),
   });
   if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
@@ -59,21 +70,33 @@ export async function submitVote(
   if (isPastDeadline(r.fristEnde)) {
     return { ok: false, message: "Frist ist abgelaufen" };
   }
-  const validOptionIds = parseOptions(r.optionen).map((o) => o.id);
+
+  const top = (
+    await db
+      .select()
+      .from(agendaItems)
+      .where(
+        and(
+          eq(agendaItems.id, parsed.data.agendaItemId),
+          eq(agendaItems.resolutionId, r.id),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (!top) return { ok: false, message: "TOP nicht gefunden" };
+
+  const validOptionIds = parseOptions(top.optionen).map((o) => o.id);
   if (!validOptionIds.includes(parsed.data.optionId)) {
     return { ok: false, message: "Ungültige Antwortoption" };
   }
 
-  // Stimmberechtigung prüfen
+  // Stimmberechtigung prüfen (auf Resolution-Ebene)
   const eligible = (
     await db
       .select()
       .from(eligibleVoters)
       .where(
-        and(
-          eq(eligibleVoters.resolutionId, r.id),
-          eq(eligibleVoters.userId, ctx.user.id),
-        ),
+        and(eq(eligibleVoters.resolutionId, r.id), eq(eligibleVoters.userId, ctx.user.id)),
       )
       .limit(1)
   )[0];
@@ -81,12 +104,12 @@ export async function submitVote(
     return { ok: false, message: "Du bist für diesen Beschluss nicht stimmberechtigt" };
   }
 
-  // Existierende Stimme prüfen
+  // Existierende Stimme für diesen TOP prüfen
   const existing = (
     await db
       .select()
       .from(votes)
-      .where(and(eq(votes.resolutionId, r.id), eq(votes.userId, ctx.user.id)))
+      .where(and(eq(votes.agendaItemId, top.id), eq(votes.userId, ctx.user.id)))
       .limit(1)
   )[0];
 
@@ -94,7 +117,10 @@ export async function submitVote(
 
   if (existing) {
     if (r.voteChangeMode === "fest") {
-      return { ok: false, message: "Deine Stimme wurde bereits abgegeben und ist unwiderruflich." };
+      return {
+        ok: false,
+        message: "Deine Stimme zu diesem TOP wurde bereits abgegeben und ist unwiderruflich.",
+      };
     }
     await db
       .update(votes)
@@ -109,13 +135,13 @@ export async function submitVote(
       action: "vote.updated",
       tenantId: ctx.tenant.id,
       actorUserId: ctx.user.id,
-      targetType: "resolution",
-      targetId: r.id,
-      payload: { optionId: parsed.data.optionId },
+      targetType: "agenda_item",
+      targetId: top.id,
+      payload: { optionId: parsed.data.optionId, resolutionId: r.id },
     });
   } else {
     await db.insert(votes).values({
-      resolutionId: r.id,
+      agendaItemId: top.id,
       userId: ctx.user.id,
       optionId: parsed.data.optionId,
       ipHash: fp.ipHash,
@@ -125,9 +151,9 @@ export async function submitVote(
       action: "vote.submitted",
       tenantId: ctx.tenant.id,
       actorUserId: ctx.user.id,
-      targetType: "resolution",
-      targetId: r.id,
-      payload: { optionId: parsed.data.optionId },
+      targetType: "agenda_item",
+      targetId: top.id,
+      payload: { optionId: parsed.data.optionId, resolutionId: r.id },
     });
   }
 
@@ -201,7 +227,10 @@ export async function withdrawResolution(
   return { ok: true, message: "Beschluss zurückgezogen" };
 }
 
-/** Berechnet das Ergebnis und schreibt es in resolutions.ergebnis. */
+/**
+ * Berechnet Ergebnisse pro TOP, schreibt sie in agenda_items.ergebnis und
+ * setzt resolutions.status = abgeschlossen.
+ */
 export async function finalizeResolution(resolutionId: string) {
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, resolutionId)).limit(1)
@@ -214,22 +243,50 @@ export async function finalizeResolution(resolutionId: string) {
     .where(eq(eligibleVoters.resolutionId, r.id));
   const eligibleCount = eligible[0]?.count ?? 0;
 
-  const rows = await db
-    .select({ optionId: votes.optionId, c: sql<number>`count(*)::int` })
-    .from(votes)
-    .where(eq(votes.resolutionId, r.id))
-    .groupBy(votes.optionId);
-  const voteCounts: Record<string, number> = {};
-  for (const row of rows) voteCounts[row.optionId] = row.c;
+  const tops = await db
+    .select()
+    .from(agendaItems)
+    .where(eq(agendaItems.resolutionId, r.id));
+  if (tops.length === 0) {
+    await db
+      .update(resolutions)
+      .set({ status: "abgeschlossen", abgeschlossenAm: new Date() })
+      .where(eq(resolutions.id, r.id));
+    return;
+  }
 
-  const result = computeResult({ resolution: r, eligibleCount, voteCounts });
+  const topIds = tops.map((t) => t.id);
+  const rows = await db
+    .select({
+      agendaItemId: votes.agendaItemId,
+      optionId: votes.optionId,
+      c: sql<number>`count(*)::int`,
+    })
+    .from(votes)
+    .where(inArray(votes.agendaItemId, topIds))
+    .groupBy(votes.agendaItemId, votes.optionId);
+
+  const byTop = new Map<string, Record<string, number>>();
+  for (const row of rows) {
+    if (!byTop.has(row.agendaItemId)) byTop.set(row.agendaItemId, {});
+    byTop.get(row.agendaItemId)![row.optionId] = row.c;
+  }
+
+  for (const top of tops) {
+    const counts = byTop.get(top.id) ?? {};
+    const result = computeAgendaItemResult({
+      agendaItem: top,
+      eligibleCount,
+      voteCounts: counts,
+    });
+    await db
+      .update(agendaItems)
+      .set({ ergebnis: result })
+      .where(eq(agendaItems.id, top.id));
+  }
 
   await db
     .update(resolutions)
-    .set({
-      status: "abgeschlossen",
-      abgeschlossenAm: new Date(),
-      ergebnis: result,
-    })
+    .set({ status: "abgeschlossen", abgeschlossenAm: new Date() })
     .where(eq(resolutions.id, r.id));
 }

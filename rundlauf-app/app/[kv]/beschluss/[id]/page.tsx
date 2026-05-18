@@ -1,9 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bodies, eligibleVoters, organizations, resolutions, votes } from "@/lib/db/schema";
-import { computeResult, isPastDeadline, parseOptions } from "@/lib/resolution";
+import {
+  agendaItems,
+  attachments,
+  bodies,
+  eligibleVoters,
+  organizations,
+  resolutions,
+  votes,
+} from "@/lib/db/schema";
+import {
+  computeAgendaItemResult,
+  isPastDeadline,
+  parseOptions,
+  type ResolutionResult,
+} from "@/lib/resolution";
 import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
@@ -23,7 +36,28 @@ export default async function ResolutionPage({
   )[0];
   if (!r || r.tenantId !== ctx.tenant.id) notFound();
 
-  // Body + Organisation laden (für Anzeige)
+  // Drafts: nur Admin darf rein, sonst zurück
+  if (r.status === "draft") {
+    if (ctx.isAdmin) {
+      return (
+        <div className="drk-card max-w-2xl mx-auto">
+          <span className="drk-badge-warning">Entwurf</span>
+          <h1 className="text-2xl font-bold mt-2">Dieser Beschluss ist noch ein Entwurf</h1>
+          <p className="mt-3" style={{ color: "var(--text-light)" }}>
+            Ergänze Tagesordnungspunkte und Anlagen, dann eröffne das Verfahren.
+          </p>
+          <Link
+            href={`/${kv}/beschluss/${r.id}/bearbeiten`}
+            className="drk-btn-primary inline-flex mt-4"
+          >
+            Entwurf bearbeiten
+          </Link>
+        </div>
+      );
+    }
+    notFound();
+  }
+
   const bodyInfo = r.bodyId
     ? (
         await db
@@ -38,7 +72,13 @@ export default async function ResolutionPage({
       )[0]
     : null;
 
-  // Berechtigung & aktuelle Stimme
+  const tops = await db
+    .select()
+    .from(agendaItems)
+    .where(eq(agendaItems.resolutionId, r.id))
+    .orderBy(asc(agendaItems.ordinal));
+
+  // Eligibility
   const eligibleRow = (
     await db
       .select()
@@ -50,17 +90,23 @@ export default async function ResolutionPage({
   )[0];
   const isEligible = Boolean(eligibleRow);
 
-  const myVote = isEligible
-    ? (
-        await db
-          .select()
-          .from(votes)
-          .where(and(eq(votes.resolutionId, r.id), eq(votes.userId, ctx.user.id)))
-          .limit(1)
-      )[0]
-    : undefined;
+  // Stimmen des aktuellen Users (pro TOP)
+  const topIds = tops.map((t) => t.id);
+  const myVotes: Record<string, { optionId: string; updatedAt: Date }> = {};
+  if (topIds.length > 0 && isEligible) {
+    const rows = await db
+      .select({
+        agendaItemId: votes.agendaItemId,
+        optionId: votes.optionId,
+        updatedAt: votes.updatedAt,
+      })
+      .from(votes)
+      .where(and(inArray(votes.agendaItemId, topIds), eq(votes.userId, ctx.user.id)));
+    for (const row of rows) {
+      myVotes[row.agendaItemId] = { optionId: row.optionId, updatedAt: row.updatedAt };
+    }
+  }
 
-  // Live-Ergebnis
   const eligibleCount = (
     await db
       .select({ count: sql<number>`count(*)::int` })
@@ -68,44 +114,79 @@ export default async function ResolutionPage({
       .where(eq(eligibleVoters.resolutionId, r.id))
   )[0]?.count ?? 0;
 
-  const rows = await db
-    .select({ optionId: votes.optionId, c: sql<number>`count(*)::int` })
-    .from(votes)
-    .where(eq(votes.resolutionId, r.id))
-    .groupBy(votes.optionId);
-  const voteCounts: Record<string, number> = {};
-  for (const row of rows) voteCounts[row.optionId] = row.c;
+  // Stimmenzahlen pro TOP
+  const countsByTop = new Map<string, Record<string, number>>();
+  if (topIds.length > 0) {
+    const rows = await db
+      .select({
+        agendaItemId: votes.agendaItemId,
+        optionId: votes.optionId,
+        c: sql<number>`count(*)::int`,
+      })
+      .from(votes)
+      .where(inArray(votes.agendaItemId, topIds))
+      .groupBy(votes.agendaItemId, votes.optionId);
+    for (const row of rows) {
+      if (!countsByTop.has(row.agendaItemId)) countsByTop.set(row.agendaItemId, {});
+      countsByTop.get(row.agendaItemId)![row.optionId] = row.c;
+    }
+  }
 
-  const result = computeResult({ resolution: r, eligibleCount, voteCounts });
-  const options = parseOptions(r.optionen);
+  // Anlagen
+  const attRows = await db
+    .select({
+      id: attachments.id,
+      filename: attachments.filename,
+      sizeBytes: attachments.sizeBytes,
+      sha256: attachments.sha256,
+      agendaItemId: attachments.agendaItemId,
+      uploadedAt: attachments.uploadedAt,
+    })
+    .from(attachments)
+    .where(eq(attachments.resolutionId, r.id))
+    .orderBy(asc(attachments.uploadedAt));
+
+  const attByTop = new Map<string, typeof attRows>();
+  const overallAttachments: typeof attRows = [];
+  for (const a of attRows) {
+    if (a.agendaItemId) {
+      if (!attByTop.has(a.agendaItemId)) attByTop.set(a.agendaItemId, []);
+      attByTop.get(a.agendaItemId)!.push(a);
+    } else {
+      overallAttachments.push(a);
+    }
+  }
+
   const past = isPastDeadline(r.fristEnde);
   const stoppedEarly = r.status === "abgeschlossen" || r.status === "zurueckgezogen";
   const canVote = r.status === "laufend" && !past && isEligible;
+  const title = r.betreff?.trim() || `Umlaufverfahren (${tops.length} TOP${tops.length === 1 ? "" : "s"})`;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="drk-card">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <span className={badgeClass(r.status)}>{statusLabel(r.status)}</span>
             {bodyInfo ? (
               <div className="text-xs uppercase tracking-wide mt-2" style={{ color: "var(--text-light)" }}>
-                {bodyInfo.organizationName ? `${bodyInfo.organizationName} · ` : ""}{bodyInfo.bodyName}
+                {bodyInfo.organizationName ? `${bodyInfo.organizationName} · ` : ""}
+                {bodyInfo.bodyName}
               </div>
             ) : null}
-            <h1 className="text-2xl font-bold mt-1">{r.titel}</h1>
+            <h1 className="text-2xl font-bold mt-1 break-words">{title}</h1>
             <div className="text-sm mt-1" style={{ color: "var(--text-light)" }}>
               Frist: {new Date(r.fristEnde).toLocaleString("de-DE")} ·{" "}
               {past ? "abgelaufen" : "noch offen"}
               {" · "}
               {r.voteChangeMode === "fest" ? "Feste Stimmen" : "Änderbar bis Frist"}
               {" · "}
-              Quorum {r.quorumPct} %
+              {tops.length} TOP{tops.length === 1 ? "" : "s"}
               {" · "}
-              {mehrheitLabel(r.mehrheit)}
+              {eligibleCount} Stimmberechtigte
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {r.status === "abgeschlossen" ? (
               <Link
                 href={`/${kv}/beschluss/${r.id}/pdf`}
@@ -117,109 +198,192 @@ export default async function ResolutionPage({
             ) : null}
           </div>
         </div>
-
-        {r.begruendungMd ? (
-          <div className="mt-4 whitespace-pre-wrap text-sm">{r.begruendungMd}</div>
-        ) : null}
       </header>
 
-      {canVote ? (
-        <section className="drk-card">
-          <h2 className="text-lg font-bold mb-3">Deine Stimme</h2>
-          <VoteForm
-            kv={kv}
-            resolutionId={r.id}
-            options={options}
-            currentOptionId={myVote?.optionId ?? null}
-            mode={r.voteChangeMode}
-            alreadyVoted={Boolean(myVote)}
-          />
-        </section>
-      ) : null}
-
-      {!canVote && isEligible ? (
-        <section className="drk-card">
-          <h2 className="text-lg font-bold mb-3">Deine Stimme</h2>
-          {myVote ? (
-            <p>
-              Du hast abgestimmt: <strong>{options.find((o) => o.id === myVote.optionId)?.label ?? myVote.optionId}</strong>
-              {" · "}
-              <span style={{ color: "var(--text-light)" }}>
-                {new Date(myVote.updatedAt).toLocaleString("de-DE")}
-              </span>
-            </p>
-          ) : (
-            <p style={{ color: "var(--text-light)" }}>
-              Du hast nicht abgestimmt.
-            </p>
-          )}
-        </section>
-      ) : null}
-
-      {!isEligible ? (
+      {!isEligible && r.status === "laufend" ? (
         <section className="drk-card">
           <p style={{ color: "var(--text-light)" }}>
             Du bist für diesen Beschluss nicht stimmberechtigt. (Mitgliedschaft wurde nach
-            Beschluss-Eröffnung angelegt oder ist nicht aktiv.)
+            Eröffnung angelegt oder ist nicht aktiv.)
           </p>
         </section>
       ) : null}
 
-      <section className="drk-card">
-        <h2 className="text-lg font-bold mb-3">Aktueller Stand</h2>
-        <div className="grid sm:grid-cols-3 gap-4 mb-4">
-          <Stat label="Stimmberechtigt" value={result.eligibleCount.toString()} />
-          <Stat
-            label="Abgegeben"
-            value={`${result.voteCount} (${result.participationPct.toFixed(1)} %)`}
-            tone={result.quorumReached ? "success" : "warning"}
-          />
-          <Stat
-            label="Quorum"
-            value={result.quorumReached ? "Erreicht" : `Min. ${r.quorumPct} %`}
-            tone={result.quorumReached ? "success" : "warning"}
-          />
-        </div>
+      {overallAttachments.length > 0 ? (
+        <section className="drk-card">
+          <h2 className="text-lg font-bold mb-3">Anlagen zum Umlauf</h2>
+          <AttachmentList kv={kv} resolutionId={r.id} items={overallAttachments} />
+        </section>
+      ) : null}
 
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ color: "var(--text-light)" }}>
-              <th className="text-left py-2">Option</th>
-              <th className="text-right py-2">Stimmen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.perOption.map((o) => (
-              <tr key={o.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                <td className="py-2">{o.label}</td>
-                <td className="text-right py-2 font-mono">{o.count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {tops.map((top) => {
+        const counts = countsByTop.get(top.id) ?? {};
+        const result: ResolutionResult =
+          (top.ergebnis as ResolutionResult | null) ??
+          computeAgendaItemResult({
+            agendaItem: top,
+            eligibleCount,
+            voteCounts: counts,
+          });
+        const options = parseOptions(top.optionen);
+        const myVote = myVotes[top.id] ?? null;
+        const topAtts = attByTop.get(top.id) ?? [];
+        return (
+          <section key={top.id} className="drk-card">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="min-w-0">
+                <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+                  TOP {top.ordinal}
+                </div>
+                <h2 className="text-xl font-bold mt-1 break-words">{top.titel}</h2>
+              </div>
+            </div>
 
-        {stoppedEarly && r.ergebnis ? (
-          <div
-            className="mt-4 rounded-lg p-4"
-            style={{
-              background: (r.ergebnis as { accepted?: boolean }).accepted
-                ? "var(--success-bg)"
-                : "var(--drk-bg)",
-              color: (r.ergebnis as { accepted?: boolean }).accepted
-                ? "var(--success)"
-                : "var(--drk)",
-            }}
-          >
-            <strong>
-              {(r.ergebnis as { accepted?: boolean }).accepted
-                ? "Beschluss angenommen"
-                : r.status === "zurueckgezogen"
-                  ? "Beschluss zurückgezogen"
-                  : "Beschluss abgelehnt / Quorum verfehlt"}
-            </strong>
-          </div>
-        ) : null}
-      </section>
+            {top.beschlussvorschlagMd ? (
+              <div className="mt-3">
+                <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+                  Beschlussvorschlag
+                </div>
+                <div className="whitespace-pre-wrap mt-1">{top.beschlussvorschlagMd}</div>
+              </div>
+            ) : null}
+
+            {top.sachlageMd ? (
+              <div className="mt-3">
+                <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+                  Sachlage
+                </div>
+                <div className="whitespace-pre-wrap mt-1 text-sm">{top.sachlageMd}</div>
+              </div>
+            ) : null}
+
+            {(top.finanzielleAuswirkungen || top.auskunftErteilen) ? (
+              <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
+                {top.finanzielleAuswirkungen ? (
+                  <div>
+                    <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+                      Finanzielle Auswirkungen
+                    </div>
+                    <div className="mt-1">{top.finanzielleAuswirkungen}</div>
+                  </div>
+                ) : null}
+                {top.auskunftErteilen ? (
+                  <div>
+                    <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
+                      Auskunft erteilen
+                    </div>
+                    <div className="mt-1">{top.auskunftErteilen}</div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {topAtts.length > 0 ? (
+              <div className="mt-4">
+                <div className="text-xs uppercase tracking-wide mb-2" style={{ color: "var(--text-light)" }}>
+                  Anlagen
+                </div>
+                <AttachmentList kv={kv} resolutionId={r.id} items={topAtts} />
+              </div>
+            ) : null}
+
+            <div className="mt-4 text-xs" style={{ color: "var(--text-light)" }}>
+              Quorum {top.quorumPct} % · {mehrheitLabel(top.mehrheit)}
+            </div>
+
+            {canVote ? (
+              <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                <h3 className="font-bold mb-2">Deine Stimme</h3>
+                <VoteForm
+                  kv={kv}
+                  resolutionId={r.id}
+                  agendaItemId={top.id}
+                  options={options}
+                  currentOptionId={myVote?.optionId ?? null}
+                  mode={r.voteChangeMode}
+                  alreadyVoted={Boolean(myVote)}
+                />
+              </div>
+            ) : null}
+
+            {!canVote && isEligible ? (
+              <div className="mt-4 border-t pt-4 text-sm" style={{ borderColor: "var(--border)" }}>
+                <h3 className="font-bold mb-2">Deine Stimme</h3>
+                {myVote ? (
+                  <p>
+                    Abgestimmt:{" "}
+                    <strong>
+                      {options.find((o) => o.id === myVote.optionId)?.label ?? myVote.optionId}
+                    </strong>{" "}
+                    <span style={{ color: "var(--text-light)" }}>
+                      ({new Date(myVote.updatedAt).toLocaleString("de-DE")})
+                    </span>
+                  </p>
+                ) : (
+                  <p style={{ color: "var(--text-light)" }}>Nicht abgestimmt.</p>
+                )}
+              </div>
+            ) : null}
+
+            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+              <h3 className="font-bold mb-2">Stand</h3>
+              <div className="grid sm:grid-cols-3 gap-3 mb-3">
+                <Stat label="Abgegeben"
+                  value={`${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`}
+                  tone={result.quorumReached ? "success" : "warning"} />
+                <Stat label="Quorum"
+                  value={result.quorumReached ? "Erreicht" : `Min. ${top.quorumPct} %`}
+                  tone={result.quorumReached ? "success" : "warning"} />
+                <Stat label="Mehrheit"
+                  value={result.majorityReached ? "Erreicht" : "Verfehlt"}
+                  tone={result.majorityReached ? "success" : "warning"} />
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ color: "var(--text-light)" }}>
+                    <th className="text-left py-2">Option</th>
+                    <th className="text-right py-2">Stimmen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.perOption.map((o) => (
+                    <tr key={o.id} className="border-t" style={{ borderColor: "var(--border)" }}>
+                      <td className="py-2">{o.label}</td>
+                      <td className="text-right py-2 font-mono">{o.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {stoppedEarly ? (
+                <div
+                  className="mt-3 rounded-lg p-3 text-sm"
+                  style={{
+                    background: result.accepted ? "var(--success-bg)" : "var(--drk-bg)",
+                    color: result.accepted ? "var(--success)" : "var(--drk)",
+                  }}
+                >
+                  <strong>
+                    {r.status === "zurueckgezogen"
+                      ? "Verfahren zurückgezogen"
+                      : result.accepted
+                        ? "Angenommen"
+                        : "Abgelehnt / Quorum verfehlt"}
+                  </strong>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        );
+      })}
+
+      {tops.length === 0 ? (
+        <section className="drk-card">
+          <p style={{ color: "var(--text-light)" }}>
+            Dieses Umlaufverfahren enthält keine Tagesordnungspunkte.
+          </p>
+        </section>
+      ) : null}
 
       {ctx.isAdmin && r.status === "laufend" ? (
         <section className="drk-card">
@@ -229,6 +393,50 @@ export default async function ResolutionPage({
       ) : null}
     </div>
   );
+}
+
+function AttachmentList({
+  kv,
+  resolutionId,
+  items,
+}: {
+  kv: string;
+  resolutionId: string;
+  items: Array<{
+    id: string;
+    filename: string;
+    sizeBytes: number;
+    sha256: string;
+  }>;
+}) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {items.map((a) => (
+        <li key={a.id}>
+          <a
+            href={`/${kv}/beschluss/${resolutionId}/anlagen/${a.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 hover:bg-gray-50"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <span className="font-medium" style={{ color: "var(--drk)" }}>
+              📄 {a.filename}
+            </span>
+            <span className="text-xs" style={{ color: "var(--text-light)" }}>
+              {formatBytes(a.sizeBytes)} · SHA-256 {a.sha256.slice(0, 12)}…
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
 function Stat({
@@ -245,9 +453,9 @@ function Stat({
   const color =
     tone === "success" ? "var(--success)" : tone === "warning" ? "#b45309" : "var(--text)";
   return (
-    <div className="rounded-lg p-4" style={{ background: bg, color }}>
+    <div className="rounded-lg p-3" style={{ background: bg, color }}>
       <div className="text-xs uppercase tracking-wide">{label}</div>
-      <div className="text-xl font-bold mt-1">{value}</div>
+      <div className="text-base font-bold mt-1">{value}</div>
     </div>
   );
 }

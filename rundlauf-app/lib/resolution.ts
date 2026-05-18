@@ -1,4 +1,4 @@
-import type { Resolution } from "@/lib/db/schema";
+import type { AgendaItem } from "@/lib/db/schema";
 
 export type ResolutionOption = {
   id: string;
@@ -66,13 +66,13 @@ export function parseOptions(raw: unknown): ResolutionOption[] {
   return out.length > 0 ? out : DEFAULT_OPTIONS;
 }
 
-export function computeResult(opts: {
-  resolution: Pick<Resolution, "optionen" | "quorumPct" | "mehrheit">;
+export function computeAgendaItemResult(opts: {
+  agendaItem: Pick<AgendaItem, "optionen" | "quorumPct" | "mehrheit">;
   eligibleCount: number;
   /** Map optionId → Anzahl Stimmen */
   voteCounts: Record<string, number>;
 }): ResolutionResult {
-  const options = parseOptions(opts.resolution.optionen);
+  const options = parseOptions(opts.agendaItem.optionen);
   const perOption = options.map((o) => ({
     id: o.id,
     label: o.label,
@@ -81,7 +81,7 @@ export function computeResult(opts: {
   const voteCount = perOption.reduce((s, o) => s + o.count, 0);
   const eligibleCount = Math.max(opts.eligibleCount, 0);
   const participationPct = eligibleCount === 0 ? 0 : (voteCount / eligibleCount) * 100;
-  const quorumPct = opts.resolution.quorumPct ?? 75;
+  const quorumPct = opts.agendaItem.quorumPct ?? 75;
   const quorumReached = participationPct >= quorumPct;
 
   const nonAbstain = options.filter((o) => !o.isAbstain);
@@ -90,10 +90,10 @@ export function computeResult(opts: {
   const yesCount = yesOpt ? (opts.voteCounts[yesOpt.id] ?? 0) : 0;
   const noCount = noOpt ? (opts.voteCounts[noOpt.id] ?? 0) : 0;
   const effectiveVotes = yesCount + noCount;
-  const thresholdPct = MAJORITY_THRESHOLD[opts.resolution.mehrheit] ?? 50;
+  const thresholdPct = MAJORITY_THRESHOLD[opts.agendaItem.mehrheit] ?? 50;
   const yesPct = effectiveVotes === 0 ? 0 : (yesCount / effectiveVotes) * 100;
   const majorityReached =
-    opts.resolution.mehrheit === "simple" ? yesPct > thresholdPct : yesPct >= thresholdPct;
+    opts.agendaItem.mehrheit === "simple" ? yesPct > thresholdPct : yesPct >= thresholdPct;
 
   return {
     eligibleCount,
@@ -115,3 +115,8 @@ export function isPastDeadline(fristEnde: Date): boolean {
 }
 
 export const MIN_FRIST_DAYS = 14;
+
+/** Limits für PDF-Anlagen pro Umlauf. */
+export const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024; // 20 MiB
+export const ATTACHMENT_MAX_COUNT = 10;
+export const ATTACHMENT_ALLOWED_MIME = "application/pdf";

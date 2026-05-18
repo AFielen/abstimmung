@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -11,6 +12,14 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+// ─── Custom Type: bytea ───────────────────────────────────────────────────
+
+const bytea = customType<{ data: Buffer; default: false }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 // ─── Enums ────────────────────────────────────────────────────────────────
 
@@ -194,7 +203,9 @@ export const magicTokens = pgTable(
   ],
 );
 
-// ─── Resolutions (Umlaufbeschlüsse) ───────────────────────────────────────
+// ─── Resolutions (Umlaufverfahren-Container) ──────────────────────────────
+// Container für 1..n TOPs (agenda_items). Inhaltliche Felder (Titel, Optionen,
+// Quorum, Mehrheit, Ergebnis) liegen pro TOP in agenda_items.
 
 export const resolutions = pgTable(
   "resolutions",
@@ -204,12 +215,10 @@ export const resolutions = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     bodyId: uuid("body_id").references(() => bodies.id, { onDelete: "restrict" }),
-    titel: text("titel").notNull(),
-    begruendungMd: text("begruendung_md").notNull().default(""),
-    /** Format: { id: string, label: string }[] */
-    optionen: jsonb("optionen").notNull(),
-    quorumPct: integer("quorum_pct").notNull().default(75),
-    mehrheit: resolutionMajorityEnum("mehrheit").notNull().default("simple"),
+    /** Optionaler übergreifender Betreff, z.B. "Beschlussvorlagen LV April 2026" */
+    betreff: text("betreff").notNull().default(""),
+    /** Versionsnummer (LV-Vorlage: "Version 1"). */
+    version: integer("version").notNull().default(1),
     voteChangeMode: voteChangeModeEnum("vote_change_mode").notNull().default("aenderbar"),
     fristEnde: timestamp("frist_ende", { withTimezone: true }).notNull(),
     status: resolutionStatusEnum("status").notNull().default("draft"),
@@ -219,8 +228,6 @@ export const resolutions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     abgeschlossenAm: timestamp("abgeschlossen_am", { withTimezone: true }),
-    /** Cached result snapshot: { quorum_erreicht, mehrheit_erreicht, gewinner, stimmen_pro_option, ... } */
-    ergebnis: jsonb("ergebnis"),
   },
   (t) => [
     index("resolutions_tenant_status_idx").on(t.tenantId, t.status),
@@ -229,7 +236,41 @@ export const resolutions = pgTable(
   ],
 );
 
-// ─── Stimmberechtigte (Snapshot zum Erstellzeitpunkt) ─────────────────────
+// ─── Agenda Items (TOPs eines Umlaufverfahrens) ───────────────────────────
+
+export const agendaItems = pgTable(
+  "agenda_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resolutionId: uuid("resolution_id")
+      .notNull()
+      .references(() => resolutions.id, { onDelete: "cascade" }),
+    /** "TOP 1", "TOP 2" — bestimmt Anzeige-Reihenfolge */
+    ordinal: integer("ordinal").notNull(),
+    titel: text("titel").notNull(),
+    /** Hauptfeld: konkreter Beschlussvorschlag */
+    beschlussvorschlagMd: text("beschlussvorschlag_md").notNull().default(""),
+    /** Optional: Sachlage / Erläuterung */
+    sachlageMd: text("sachlage_md"),
+    /** Optional: Finanzielle Auswirkungen */
+    finanzielleAuswirkungen: text("finanzielle_auswirkungen"),
+    /** Optional: Auskunft erteilt durch (Namen, Funktionen) */
+    auskunftErteilen: text("auskunft_erteilen"),
+    /** Format: { id: string, label: string, isAbstain?: boolean }[] */
+    optionen: jsonb("optionen").notNull(),
+    quorumPct: integer("quorum_pct").notNull().default(75),
+    mehrheit: resolutionMajorityEnum("mehrheit").notNull().default("simple"),
+    /** Snapshot des Ergebnisses nach Abschluss */
+    ergebnis: jsonb("ergebnis"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agenda_items_resolution_idx").on(t.resolutionId, t.ordinal),
+    uniqueIndex("agenda_items_resolution_ordinal_idx").on(t.resolutionId, t.ordinal),
+  ],
+);
+
+// ─── Stimmberechtigte (Snapshot, gilt für alle TOPs eines Umlaufs) ────────
 
 export const eligibleVoters = pgTable(
   "eligible_voters",
@@ -250,19 +291,19 @@ export const eligibleVoters = pgTable(
   ],
 );
 
-// ─── Votes ────────────────────────────────────────────────────────────────
+// ─── Votes (pro TOP) ──────────────────────────────────────────────────────
 
 export const votes = pgTable(
   "votes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    resolutionId: uuid("resolution_id")
+    agendaItemId: uuid("agenda_item_id")
       .notNull()
-      .references(() => resolutions.id, { onDelete: "cascade" }),
+      .references(() => agendaItems.id, { onDelete: "cascade" }),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    /** Verweist auf optionen[].id im resolutions-Eintrag. */
+    /** Verweist auf optionen[].id im agenda_items-Eintrag. */
     optionId: text("option_id").notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -270,7 +311,36 @@ export const votes = pgTable(
     userAgentHash: text("user_agent_hash"),
   },
   (t) => [
-    uniqueIndex("votes_resolution_user_idx").on(t.resolutionId, t.userId),
+    uniqueIndex("votes_agenda_user_idx").on(t.agendaItemId, t.userId),
+  ],
+);
+
+// ─── Attachments (PDF-Anlagen, in bytea gespeichert) ──────────────────────
+
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resolutionId: uuid("resolution_id")
+      .notNull()
+      .references(() => resolutions.id, { onDelete: "cascade" }),
+    /** Wenn null: Anlage betrifft den gesamten Umlauf, sonst einen TOP. */
+    agendaItemId: uuid("agenda_item_id").references(() => agendaItems.id, {
+      onDelete: "cascade",
+    }),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    data: bytea("data").notNull(),
+    uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("attachments_resolution_idx").on(t.resolutionId),
+    index("attachments_agenda_item_idx").on(t.agendaItemId),
   ],
 );
 
@@ -301,6 +371,8 @@ export type User = typeof users.$inferSelect;
 export type Tenant = typeof tenants.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type Resolution = typeof resolutions.$inferSelect;
+export type AgendaItem = typeof agendaItems.$inferSelect;
 export type Vote = typeof votes.$inferSelect;
+export type Attachment = typeof attachments.$inferSelect;
 export type Organization = typeof organizations.$inferSelect;
 export type Body = typeof bodies.$inferSelect;
