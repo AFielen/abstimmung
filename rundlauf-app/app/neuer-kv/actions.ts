@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireUser, getSuperadminEmails } from "@/lib/auth/current-user";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
-import { memberships, tenants } from "@/lib/db/schema";
+import { bodies, memberships, organizations, tenants } from "@/lib/db/schema";
 import { sendSuperadminNewTenantNotice } from "@/lib/mail/templates";
 import { slugify } from "@/lib/slug";
 
@@ -69,6 +69,22 @@ export async function createTenant(
     role: "owner",
     status: "invited",
     invitedByUserId: user.id,
+  });
+
+  // Standard-Struktur anlegen: Mutter-Organisation + Präsidium-Gremium
+  const [mutterOrg] = await db
+    .insert(organizations)
+    .values({
+      tenantId: tenant.id,
+      name: tenant.name,
+      type: "verein",
+      description: "Hauptverein",
+    })
+    .returning();
+  await db.insert(bodies).values({
+    tenantId: tenant.id,
+    organizationId: mutterOrg.id,
+    name: "Präsidium",
   });
 
   await logAudit({

@@ -56,6 +56,15 @@ export const voteChangeModeEnum = pgEnum("vote_change_mode", [
   "fest",
 ]);
 
+export const organizationTypeEnum = pgEnum("organization_type", [
+  "verein",
+  "gmbh",
+  "ggmbh",
+  "gug",
+  "kdoer",
+  "sonstige",
+]);
+
 // ─── Users ────────────────────────────────────────────────────────────────
 
 export const users = pgTable(
@@ -122,6 +131,48 @@ export const memberships = pgTable(
   ],
 );
 
+// ─── Organisationen (Mutter-KV + Töchter) ─────────────────────────────────
+
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: organizationTypeEnum("type").notNull().default("verein"),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("organizations_tenant_idx").on(t.tenantId)],
+);
+
+// ─── Gremien (Präsidium, Aufsichtsrat, …) ─────────────────────────────────
+
+export const bodies = pgTable(
+  "bodies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").references(() => organizations.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    /** Standard-Quorum/Mehrheit als Vorbelegung beim Beschluss-Anlegen */
+    defaultQuorumPct: integer("default_quorum_pct").notNull().default(75),
+    defaultMehrheit: resolutionMajorityEnum("default_mehrheit").notNull().default("simple"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("bodies_tenant_idx").on(t.tenantId),
+    index("bodies_organization_idx").on(t.organizationId),
+  ],
+);
+
 // ─── Magic-Link Tokens ────────────────────────────────────────────────────
 
 export const magicTokens = pgTable(
@@ -152,6 +203,7 @@ export const resolutions = pgTable(
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
+    bodyId: uuid("body_id").references(() => bodies.id, { onDelete: "restrict" }),
     titel: text("titel").notNull(),
     begruendungMd: text("begruendung_md").notNull().default(""),
     /** Format: { id: string, label: string }[] */
@@ -172,6 +224,7 @@ export const resolutions = pgTable(
   },
   (t) => [
     index("resolutions_tenant_status_idx").on(t.tenantId, t.status),
+    index("resolutions_body_idx").on(t.bodyId, t.createdAt),
     index("resolutions_frist_ende_idx").on(t.fristEnde),
   ],
 );
@@ -249,3 +302,5 @@ export type Tenant = typeof tenants.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type Resolution = typeof resolutions.$inferSelect;
 export type Vote = typeof votes.$inferSelect;
+export type Organization = typeof organizations.$inferSelect;
+export type Body = typeof bodies.$inferSelect;

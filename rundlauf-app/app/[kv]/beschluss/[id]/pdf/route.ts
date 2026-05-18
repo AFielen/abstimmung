@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { db } from "@/lib/db";
-import { eligibleVoters, resolutions, users, votes } from "@/lib/db/schema";
+import { bodies, eligibleVoters, organizations, resolutions, users, votes } from "@/lib/db/schema";
 import { buildProtokollPdf } from "@/lib/pdf";
 import { logAudit } from "@/lib/audit";
 import { requireTenantContext } from "@/lib/tenant";
@@ -70,12 +70,27 @@ export async function GET(
       .limit(1)
   )[0] ?? null;
 
+  const bodyInfo = r.bodyId
+    ? (
+        await db
+          .select({
+            name: bodies.name,
+            organizationName: organizations.name,
+          })
+          .from(bodies)
+          .leftJoin(organizations, eq(organizations.id, bodies.organizationId))
+          .where(eq(bodies.id, r.bodyId))
+          .limit(1)
+      )[0] ?? null
+    : null;
+
   const buf = buildProtokollPdf({
     tenant: ctx.tenant,
     resolution: r,
     createdBy: creator,
     eligible,
     votes: voteRows,
+    body: bodyInfo,
   });
 
   // Persistieren (best-effort), wenn Beschluss abgeschlossen ist

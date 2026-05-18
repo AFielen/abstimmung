@@ -33,9 +33,14 @@ export default async function TenantLayout({
             Neuer Beschluss
           </Link>
           {ctx.isAdmin ? (
-            <Link href={`/${kv}/mitglieder`} className="drk-btn-secondary">
-              Mitglieder
-            </Link>
+            <>
+              <Link href={`/${kv}/mitglieder`} className="drk-btn-secondary">
+                Mitglieder
+              </Link>
+              <Link href={`/${kv}/struktur`} className="drk-btn-secondary">
+                Struktur
+              </Link>
+            </>
           ) : null}
           <Link href="/" className="drk-btn-secondary">
             Alle KVs

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { eligibleVoters, resolutions, votes } from "@/lib/db/schema";
+import { bodies, eligibleVoters, organizations, resolutions, votes } from "@/lib/db/schema";
 import { computeResult, isPastDeadline, parseOptions } from "@/lib/resolution";
 import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
@@ -22,6 +22,21 @@ export default async function ResolutionPage({
     await db.select().from(resolutions).where(eq(resolutions.id, id)).limit(1)
   )[0];
   if (!r || r.tenantId !== ctx.tenant.id) notFound();
+
+  // Body + Organisation laden (für Anzeige)
+  const bodyInfo = r.bodyId
+    ? (
+        await db
+          .select({
+            bodyName: bodies.name,
+            organizationName: organizations.name,
+          })
+          .from(bodies)
+          .leftJoin(organizations, eq(organizations.id, bodies.organizationId))
+          .where(eq(bodies.id, r.bodyId))
+          .limit(1)
+      )[0]
+    : null;
 
   // Berechtigung & aktuelle Stimme
   const eligibleRow = (
@@ -73,7 +88,12 @@ export default async function ResolutionPage({
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className={badgeClass(r.status)}>{statusLabel(r.status)}</span>
-            <h1 className="text-2xl font-bold mt-2">{r.titel}</h1>
+            {bodyInfo ? (
+              <div className="text-xs uppercase tracking-wide mt-2" style={{ color: "var(--text-light)" }}>
+                {bodyInfo.organizationName ? `${bodyInfo.organizationName} · ` : ""}{bodyInfo.bodyName}
+              </div>
+            ) : null}
+            <h1 className="text-2xl font-bold mt-1">{r.titel}</h1>
             <div className="text-sm mt-1" style={{ color: "var(--text-light)" }}>
               Frist: {new Date(r.fristEnde).toLocaleString("de-DE")} ·{" "}
               {past ? "abgelaufen" : "noch offen"}

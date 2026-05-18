@@ -22,6 +22,7 @@ export type ProtokollInput = {
   createdBy: Pick<User, "name" | "email"> | null;
   eligible: EligibleSnapshot[];
   votes: VoteWithUser[];
+  body?: { name: string; organizationName: string | null } | null;
 };
 
 export function buildProtokollPdf(input: ProtokollInput): Buffer {
@@ -57,6 +58,13 @@ export function buildProtokollPdf(input: ProtokollInput): Buffer {
   doc.setFont("helvetica", "normal");
   doc.text(input.tenant.name, margin, y);
   y += 4;
+  if (input.body) {
+    const bodyLine = input.body.organizationName
+      ? `${input.body.organizationName} – ${input.body.name}`
+      : input.body.name;
+    doc.text(`Gremium: ${bodyLine}`, margin, y);
+    y += 4;
+  }
   doc.text(
     `Beschluss-ID: ${input.resolution.id}`,
     margin,

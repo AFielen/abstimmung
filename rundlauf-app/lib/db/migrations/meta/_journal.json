@@ -8,6 +8,13 @@
       "when": 1747574400000,
       "tag": "0000_initial_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1747660800000,
+      "tag": "0001_organizations_and_bodies",
+      "breakpoints": true
     }
   ]
 }
