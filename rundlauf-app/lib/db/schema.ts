@@ -285,9 +285,16 @@ export const eligibleVoters = pgTable(
     nameSnapshot: text("name_snapshot").notNull(),
     emailSnapshot: text("email_snapshot").notNull(),
     roleSnapshot: membershipRoleEnum("role_snapshot").notNull(),
+    /**
+     * Zeitpunkt, an dem die Beschluss-Einladungs-Mail an dieses Mitglied
+     * versendet wurde. NULL, solange die Membership zum Eröffnungszeitpunkt
+     * noch im Status "invited" war — der Versand erfolgt dann beim Beitritt.
+     */
+    inviteEmailSentAt: timestamp("invite_email_sent_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("eligible_voters_resolution_user_idx").on(t.resolutionId, t.userId),
+    index("eligible_voters_pending_idx").on(t.userId, t.inviteEmailSentAt),
   ],
 );
 

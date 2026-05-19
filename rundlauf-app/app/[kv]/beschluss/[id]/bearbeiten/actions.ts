@@ -396,6 +396,7 @@ export async function publishResolution(
     .select({
       userId: memberships.userId,
       role: memberships.role,
+      status: memberships.status,
       email: users.email,
       name: users.name,
     })
@@ -404,23 +405,26 @@ export async function publishResolution(
     .where(
       and(
         eq(memberships.tenantId, ctx.tenant.id),
-        eq(memberships.status, "active"),
+        inArray(memberships.status, ["active", "invited"]),
         inArray(memberships.userId, requestedIds),
       ),
     );
 
   if (validMembers.length < 2) {
-    return { ok: false, message: "Mindestens 2 aktive Mitglieder müssen ausgewählt sein." };
+    return { ok: false, message: "Mindestens 2 Mitglieder (aktiv oder eingeladen) müssen ausgewählt sein." };
   }
   if (validMembers.length !== requestedIds.length) {
     return {
       ok: false,
       message:
-        "Mindestens ein ausgewählter Benutzer ist kein aktives Mitglied mehr. Bitte Liste prüfen.",
+        "Mindestens ein ausgewählter Benutzer ist nicht (mehr) Mitglied oder wurde entfernt. Bitte Liste prüfen.",
     };
   }
 
-  // Eligible-Voter Snapshots schreiben
+  // Eligible-Voter Snapshots schreiben. Aktive Mitglieder bekommen die Mail
+  // unten sofort → inviteEmailSentAt = jetzt. Eingeladene bekommen sie beim
+  // Beitritt → inviteEmailSentAt bleibt NULL.
+  const publishedAt = new Date();
   await db.insert(eligibleVoters).values(
     validMembers.map((m) => ({
       resolutionId: r!.id,
@@ -428,13 +432,17 @@ export async function publishResolution(
       nameSnapshot: m.name ?? m.email,
       emailSnapshot: m.email,
       roleSnapshot: m.role,
+      inviteEmailSentAt: m.status === "active" ? publishedAt : null,
     })),
   );
+
+  const activeMembers = validMembers.filter((m) => m.status === "active");
+  const pendingInviteCount = validMembers.length - activeMembers.length;
 
   // Status auf laufend
   await db
     .update(resolutions)
-    .set({ status: "laufend", startedAt: new Date() })
+    .set({ status: "laufend", startedAt: publishedAt })
     .where(eq(resolutions.id, r!.id));
 
   await logAudit({
@@ -445,17 +453,20 @@ export async function publishResolution(
     targetId: r!.id,
     payload: {
       eligibleCount: validMembers.length,
+      activeCount: activeMembers.length,
+      pendingInviteCount,
       topCount,
       fristEnde: r!.fristEnde.toISOString(),
     },
   });
 
-  // Einladungs-Mails
+  // Einladungs-Mails an aktive Mitglieder. Eingeladene erhalten den Link beim
+  // Beitritt automatisch (siehe lib/mail/pending-invites.ts).
   const link = `${process.env.APP_URL?.replace(/\/$/, "")}/${ctx.tenant.slug}/beschluss/${r!.id}`;
   const subjectTitle =
     r!.betreff || `Umlaufverfahren mit ${topCount} Beschlussvorlage${topCount === 1 ? "" : "n"}`;
   await Promise.allSettled(
-    validMembers.map((m) =>
+    activeMembers.map((m) =>
       sendResolutionInvite({
         to: { email: m.email, name: m.name ?? undefined },
         tenantName: ctx.tenant.name,
