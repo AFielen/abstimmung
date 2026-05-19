@@ -57,13 +57,13 @@ export async function sendInviteLink(opts: {
   rawToken: string;
 }) {
   const link = `${appUrl()}/auth/magic/${opts.rawToken}`;
-  const text = `Hallo,\n\n${opts.inviterName} hat dich in den Kreisverband "${opts.tenantName}" eingeladen.\n\nMit folgendem Link nimmst du die Einladung an:\n${link}\n\nDer Link ist 7 Tage gültig.`;
+  const text = `Hallo,\n\n${opts.inviterName} hat dich in den Kreisverband "${opts.tenantName}" eingeladen.\n\nMit folgendem Link nimmst du die Einladung an:\n${link}\n\nDer Link ist 3 Tage gültig.`;
   const html = HTML_WRAPPER(
     `Einladung in ${opts.tenantName}`,
     `<p><strong>${opts.inviterName}</strong> hat dich in den Kreisverband <strong>${opts.tenantName}</strong> eingeladen.</p>
      <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Einladung annehmen</a></p>
      <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${link}</p>
-     <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist 7 Tage gültig.</p>`,
+     <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist 3 Tage gültig.</p>`,
   );
   await sendMail({ to: opts.to, subject: `Einladung zu ${opts.tenantName}`, text, html });
 }
