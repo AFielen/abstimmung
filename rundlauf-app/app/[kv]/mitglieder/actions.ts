@@ -79,7 +79,7 @@ async function inviteUserToTenant(opts: {
     purpose: "invite",
     userId: user.id,
     tenantId: ctx.tenant.id,
-    ttlMinutes: 7 * 24 * 60,
+    ttlMinutes: 3 * 24 * 60,
   });
 
   await sendInviteLink({
