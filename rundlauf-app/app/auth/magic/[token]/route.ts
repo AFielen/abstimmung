@@ -5,6 +5,7 @@ import { isSuperadminEmail } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { memberships, users } from "@/lib/db/schema";
+import { sendPendingResolutionInvites } from "@/lib/mail/pending-invites";
 
 export async function GET(
   req: NextRequest,
@@ -55,6 +56,18 @@ export async function GET(
           eq(memberships.userId, userId),
         ),
       );
+
+    // Beschluss-Einladungs-Mails für laufende Verfahren versenden, in denen
+    // dieser Nutzer als stimmberechtigt geführt ist. Fehler werden geloggt,
+    // brechen die Aktivierung aber nicht ab.
+    try {
+      await sendPendingResolutionInvites({
+        tenantId: consumed.tenantId,
+        userId,
+      });
+    } catch (err) {
+      console.error("[magic] pending invites hook failed", err);
+    }
   }
 
   // Session setzen
