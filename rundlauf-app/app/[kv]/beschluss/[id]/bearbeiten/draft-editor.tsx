@@ -747,13 +747,15 @@ function EligibilitySection({
           </button>
         </div>
 
-        <p
-          className="text-xs"
-          style={{ color: "var(--text-light)" }}
-        >
-          Eingeladene Mitglieder erhalten den Abstimmungslink automatisch,
-          sobald sie der KV-Einladung folgen.
-        </p>
+        {members.some((m) => m.status === "invited") ? (
+          <p
+            className="text-xs"
+            style={{ color: "var(--text-light)" }}
+          >
+            Eingeladene Mitglieder erhalten den Abstimmungslink automatisch,
+            sobald sie der KV-Einladung folgen.
+          </p>
+        ) : null}
 
         <ul className="flex flex-col gap-1 max-h-80 overflow-y-auto">
           {members.map((m) => {
