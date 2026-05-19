@@ -84,13 +84,18 @@ export default function PresenterApp() {
 
         const lsId = data.deviceId;
         const fpId = data.fingerprintId;
+        // connectionId is assigned by the transport layer (PeerJS peer ID or
+        // ws-relay connId) — voters cannot spoof it across submissions.
+        const connKey = 'conn:' + connectionId;
 
-        // Prevent double voting by localStorage ID
+        if (votedDevices.current.has(connKey)) {
+          t.sendTo(connectionId, { type: 'already-voted' });
+          return;
+        }
         if (lsId && votedDevices.current.has('ls:' + lsId)) {
           t.sendTo(connectionId, { type: 'already-voted' });
           return;
         }
-        // Prevent double voting by fingerprint ID
         if (fpId && votedDevices.current.has('fp:' + fpId)) {
           t.sendTo(connectionId, { type: 'already-voted' });
           return;
@@ -100,6 +105,7 @@ export default function PresenterApp() {
         if (!s.currentVote.options.includes(data.option)) return;
 
         // Record vote
+        votedDevices.current.add(connKey);
         if (lsId) votedDevices.current.add('ls:' + lsId);
         if (fpId) votedDevices.current.add('fp:' + fpId);
 
@@ -453,7 +459,7 @@ export default function PresenterApp() {
 
       {/* Connecting phase */}
       {state.phase === 'connecting' && (
-        <div className="bg-white rounded-[10px] p-8 mb-4 shadow-sm text-center">
+        <div className="drk-panel p-8 mb-4 text-center">
           <div
             className="w-10 h-10 rounded-full mx-auto mb-4"
             style={{
@@ -473,7 +479,7 @@ export default function PresenterApp() {
 
       {/* Session bar */}
       {isSessionActive && state.phase !== 'connecting' && (
-        <div className="bg-white rounded-[10px] px-5 py-3 mb-4 shadow-sm flex items-center justify-between">
+        <div className="drk-panel px-5 py-3 mb-4 flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
               {state.sessionTitle}

@@ -83,6 +83,13 @@ body {
   }
 }
 
+/* In-App-Panel: kompakter als .drk-card (Setup/Voting/Result-Flow) */
+.drk-panel {
+  background: var(--bg-card);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
 /* ── DRK Buttons ── */
 .drk-btn-primary {
   background-color: var(--drk);

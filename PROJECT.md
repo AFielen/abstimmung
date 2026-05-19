@@ -21,10 +21,9 @@ Digitales Abstimmungssystem fuer Vereinsversammlungen des Deutschen Roten Kreuze
 
 ## Quick Links
 
-- **Live (Original):** https://afielen.github.io/drk/index.html
 - **Repo:** https://github.com/DRKAachen/VereinsabstimmungDRK
 - **Local Dev:** http://localhost:3000 (npm run dev)
-- **Docker:** http://localhost:3334 (docker compose up)
+- **Docker (dev profile):** http://localhost:3000 (docker compose --profile dev up)
 - **Signal-Server:** http://localhost:9000 (PeerJS + WS-Relay)
 
 ---
@@ -122,7 +121,6 @@ VereinsabstimmungDRK/
 │   │   ├── voted-rounds.ts            # localStorage-basiertes Round-Tracking
 │   │   └── utils.ts                   # Formatierung, Helpers
 │   └── Dockerfile
-├── index.html                          # Original-App (Single-Page)
 ├── API-INTEGRATION.md                  # KI-Agenten API-Doku
 └── PROJECT.md                          # Diese Datei
 ```
@@ -193,7 +191,7 @@ VereinsabstimmungDRK/
 ### Next.js Migration
 
 - **Date:** 2026-02-19
-- **Context:** Original-App war ein Monolith (index.html + inline JS). Fuer Wartbarkeit und Docker-Deployment auf Next.js migriert.
+- **Context:** Vorgaengerversion war ein statischer Monolith (index.html + inline JS), separat in einem anderen Repo gehostet. Fuer Wartbarkeit und Docker-Deployment auf Next.js migriert.
 - **Decision:** Next.js 16 mit App Router
 - **Files:** Gesamte `next-app/` Struktur
 
@@ -263,10 +261,6 @@ docker compose up -d --build
 ```
 
 **Container:** `abstimmung` (Port 3000), `peerjs-signal` (Port 9000) — nur intern im Docker-Netzwerk `caddy-net` erreichbar
-
-### Original-App (GitHub Pages)
-
-Die Original-App (index.html) laeuft weiterhin auf GitHub Pages als statische Seite.
 
 ---
 

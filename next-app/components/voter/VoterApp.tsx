@@ -155,12 +155,6 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
           break;
         }
 
-        case 'redirect': {
-          transportRef.current.markSessionEnded();
-          window.location.href = data.url;
-          break;
-        }
-
         case 'sk-result': {
           if (data.valid && data.options && data.voteType && data.topic) {
             // Code was valid — show vote screen

@@ -6,19 +6,76 @@ const ROOM_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 const MAX_ROOMS = 100;
 const MAX_VOTERS_PER_ROOM = 300;
+const MAX_CONNECTIONS_PER_IP = 10;
+// Rate-limit per WS connection (sliding 1-second window).
+const MAX_MESSAGES_PER_SECOND = 20;
+// Bounds for the application payload inside `host-msg` / `host-msg-to` / `voter-msg`.
+// The wrapper itself is already capped by `maxPayload` (64 KB) on the ws server.
+const MAX_DATA_STRING_LENGTH = 1024;
+const MAX_DATA_KEYS = 32;
+const MAX_DATA_DEPTH = 4;
+function validateDataPayload(data, depth = 0) {
+    if (depth > MAX_DATA_DEPTH)
+        return false;
+    if (data === null)
+        return true;
+    const t = typeof data;
+    if (t === 'string')
+        return data.length <= MAX_DATA_STRING_LENGTH;
+    if (t === 'number' || t === 'boolean')
+        return true;
+    if (Array.isArray(data)) {
+        if (data.length > MAX_DATA_KEYS)
+            return false;
+        return data.every((v) => validateDataPayload(v, depth + 1));
+    }
+    if (t === 'object') {
+        const obj = data;
+        const keys = Object.keys(obj);
+        if (keys.length > MAX_DATA_KEYS)
+            return false;
+        for (const k of keys) {
+            if (k.length > MAX_DATA_STRING_LENGTH)
+                return false;
+            if (!validateDataPayload(obj[k], depth + 1))
+                return false;
+        }
+        return true;
+    }
+    return false;
+}
 class WebSocketRelay {
     constructor() {
         this.rooms = new Map();
         this.connCounter = 0;
+        this.connsPerIp = new Map();
         this.wss = new ws_1.WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
-        this.wss.on('connection', (ws) => this.handleConnection(ws));
+        this.wss.on('connection', (ws, request) => {
+            this.handleConnection(ws, request);
+        });
         this.wss.on('error', (err) => {
             console.error('[WS Relay] Server error:', err.message);
         });
         this.cleanupTimer = setInterval(() => this.cleanupStaleRooms(), CLEANUP_INTERVAL_MS);
         console.log('[WS Relay] Initialized');
     }
+    clientIp(request) {
+        const fwd = request.headers['x-forwarded-for'];
+        if (typeof fwd === 'string' && fwd.length > 0) {
+            return fwd.split(',')[0].trim();
+        }
+        return request.socket.remoteAddress || 'unknown';
+    }
     handleUpgrade(request, socket, head) {
+        const ip = this.clientIp(request);
+        const current = this.connsPerIp.get(ip) || 0;
+        if (current >= MAX_CONNECTIONS_PER_IP) {
+            console.warn(`[WS Relay] Rejected upgrade from ${ip}: per-IP cap reached (${current})`);
+            const s = socket;
+            s.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n');
+            s.destroy();
+            return;
+        }
         this.wss.handleUpgrade(request, socket, head, (ws) => {
             this.wss.emit('connection', ws, request);
         });
@@ -38,19 +95,40 @@ class WebSocketRelay {
     generateConnId() {
         return `conn-${++this.connCounter}`;
     }
-    handleConnection(ws) {
+    handleConnection(ws, request) {
         let member = null;
         let room = null;
+        const ip = this.clientIp(request);
+        this.connsPerIp.set(ip, (this.connsPerIp.get(ip) || 0) + 1);
+        // Sliding 1-second window for message rate limiting
+        let windowStart = Date.now();
+        let windowCount = 0;
         ws.on('error', (err) => {
             console.error('[WS Relay] WebSocket error:', err.message);
         });
         ws.on('message', (raw) => {
+            const now = Date.now();
+            if (now - windowStart >= 1000) {
+                windowStart = now;
+                windowCount = 0;
+            }
+            windowCount++;
+            if (windowCount > MAX_MESSAGES_PER_SECOND) {
+                console.warn(`[WS Relay] Rate limit exceeded for ${ip}, closing connection`);
+                this.send(ws, { type: 'error', message: 'Rate limit exceeded' });
+                ws.close();
+                return;
+            }
             let msg;
             try {
                 msg = JSON.parse(raw.toString());
             }
             catch {
                 this.send(ws, { type: 'error', message: 'Invalid JSON' });
+                return;
+            }
+            if (!msg || typeof msg !== 'object' || typeof msg.type !== 'string') {
+                this.send(ws, { type: 'error', message: 'Invalid message' });
                 return;
             }
             switch (msg.type) {
@@ -107,6 +185,10 @@ class WebSocketRelay {
                 case 'host-msg': {
                     if (!room || !member || member.role !== 'host')
                         return;
+                    if (!validateDataPayload(msg.data)) {
+                        this.send(ws, { type: 'error', message: 'Invalid data payload' });
+                        return;
+                    }
                     room.lastActivity = Date.now();
                     room.voters.forEach((voter) => {
                         this.send(voter.ws, { type: 'host-data', data: msg.data });
@@ -116,6 +198,12 @@ class WebSocketRelay {
                 case 'host-msg-to': {
                     if (!room || !member || member.role !== 'host')
                         return;
+                    if (typeof msg.connectionId !== 'string' || msg.connectionId.length > 64)
+                        return;
+                    if (!validateDataPayload(msg.data)) {
+                        this.send(ws, { type: 'error', message: 'Invalid data payload' });
+                        return;
+                    }
                     room.lastActivity = Date.now();
                     const voter = room.voters.get(msg.connectionId);
                     if (voter) {
@@ -126,6 +214,10 @@ class WebSocketRelay {
                 case 'voter-msg': {
                     if (!room || !member || member.role !== 'voter')
                         return;
+                    if (!validateDataPayload(msg.data)) {
+                        this.send(ws, { type: 'error', message: 'Invalid data payload' });
+                        return;
+                    }
                     room.lastActivity = Date.now();
                     if (room.host) {
                         this.send(room.host.ws, {
@@ -139,6 +231,13 @@ class WebSocketRelay {
             }
         });
         ws.on('close', () => {
+            const remaining = (this.connsPerIp.get(ip) || 1) - 1;
+            if (remaining <= 0) {
+                this.connsPerIp.delete(ip);
+            }
+            else {
+                this.connsPerIp.set(ip, remaining);
+            }
             if (!room || !member)
                 return;
             if (member.role === 'host') {

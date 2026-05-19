@@ -39,7 +39,7 @@ export default function VoteResultDisplay({ result, onNextVote }: VoteResultDisp
   const outcome = outcomeLabel(result);
 
   return (
-    <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm" style={{ animation: 'fade-up 0.4s ease-out' }}>
+    <div className="drk-panel p-6 mb-4" style={{ animation: 'fade-up 0.4s ease-out' }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-lg font-bold" style={{ color: 'var(--text)' }}>

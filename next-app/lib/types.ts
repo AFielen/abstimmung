@@ -44,7 +44,6 @@ export type HostMessage =
   | { type: 'already-voted' }
   | { type: 'waiting'; mode: SessionMode }
   | { type: 'session-ended' }
-  | { type: 'redirect'; url: string }
   | { type: 'timer-update'; seconds: number }
   | { type: 'sk-result'; valid: boolean; reason?: string; options?: string[]; voteType?: VoteType; topic?: string }
   | { type: 'sk-vote-result'; success: boolean; reason?: string }

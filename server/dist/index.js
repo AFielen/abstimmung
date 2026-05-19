@@ -9,9 +9,31 @@ const peer_1 = require("peer");
 const ws_1 = require("ws");
 const ws_relay_1 = require("./ws-relay");
 const PORT = parseInt(process.env.PORT || '9000', 10);
+// Origins allowed to talk to this signal server (comma-separated).
+// Default: the production app + localhost for dev. Set ALLOWED_ORIGINS to "*"
+// to disable the check (NOT recommended in production).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://drk-abstimmung.de,http://localhost:3000')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+const ALLOW_ANY_ORIGIN = ALLOWED_ORIGINS.includes('*');
+function isAllowedOrigin(origin) {
+    if (ALLOW_ANY_ORIGIN)
+        return true;
+    if (!origin)
+        return false;
+    return ALLOWED_ORIGINS.includes(origin);
+}
 const app = (0, express_1.default)();
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (ALLOW_ANY_ORIGIN) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    else if (origin && isAllowedOrigin(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') {
@@ -46,6 +68,13 @@ app.use('/', peerServer);
 const wsRelay = new ws_relay_1.WebSocketRelay();
 // Single unified upgrade handler — routes WebSocket upgrades to the right handler
 server.on('upgrade', (request, socket, head) => {
+    const origin = request.headers.origin;
+    if (!isAllowedOrigin(origin)) {
+        console.warn(`[upgrade] Rejected WS upgrade from origin: ${origin || '(none)'}`);
+        socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+    }
     const { pathname } = new URL(request.url || '', 'http://d');
     if (pathname === '/ws') {
         wsRelay.handleUpgrade(request, socket, head);
@@ -64,6 +93,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`  PeerJS signaling: /peerjs`);
     console.log(`  WebSocket relay:  /ws`);
     console.log(`  Health check:     /health`);
+    console.log(`  Allowed origins:  ${ALLOW_ANY_ORIGIN ? '* (any)' : ALLOWED_ORIGINS.join(', ')}`);
 });
 const gracefulShutdown = () => {
     console.log('Shutting down...');
