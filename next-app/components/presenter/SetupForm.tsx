@@ -92,7 +92,7 @@ export default function SetupForm({ onStartSession }: SetupFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm">
+      <div className="drk-panel p-6 mb-4">
         <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>
           Versammlung einrichten
         </h2>

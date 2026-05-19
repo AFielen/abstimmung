@@ -47,7 +47,7 @@ export default function VoteHistory({
   }
 
   return (
-    <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm">
+    <div className="drk-panel p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold" style={{ color: 'var(--text)' }}>
           Bisherige Abstimmungen

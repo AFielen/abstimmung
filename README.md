@@ -12,10 +12,6 @@ Ein digitales Abstimmungssystem fuer Vereinsversammlungen. Ermoeglicht geheime A
 
 Dieses Tool digitalisiert den Abstimmungsprozess bei Mitgliederversammlungen -- **direkt per QR-Code vom Smartphone oder ueber bereitgestellte Stimmkarten-Geraete.**
 
-## Live-Demo
-
-Gehostet auf GitHub Pages: **https://afielen.github.io/drk/index.html**
-
 ## Funktionsweise
 
 1. **Versammlungsleiter** oeffnet die App auf dem Laptop/Beamer und startet eine Versammlung
@@ -180,14 +176,6 @@ Vollstaendiges Protokoll mit:
 ```
 VereinsabstimmungDRK/
 ├── docker-compose.yml              # Docker Compose (2 Services)
-├── index.html                      # Original-App (Single-Page, GitHub Pages)
-├── danke.html                      # Danke-Seite (Original)
-├── datenschutz.html                # Datenschutz (Original)
-├── impressum.html                  # Impressum (Original)
-├── fonts/                          # Lokal gehostete Schriftarten
-├── js/                             # Modulare JS-Dateien (Original)
-├── css/                            # Stylesheets (Original)
-├── logo.png / logo.svg             # DRK-Logo
 ├── API-INTEGRATION.md              # KI-Agenten-Schnittstelle
 ├── PROJECT.md                      # Interne Projektdokumentation
 │

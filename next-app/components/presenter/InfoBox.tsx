@@ -13,7 +13,7 @@ export default function InfoBox({ sessionMode, transportMode, context }: InfoBox
 
   if (context === 'welcome') {
     return (
-      <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm border-l-4" style={{ borderLeftColor: 'var(--drk)' }}>
+      <div className="drk-panel p-6 mb-4 border-l-4" style={{ borderLeftColor: 'var(--drk)' }}>
         <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text)' }}>
           Willkommen zur Abstimmung
         </h3>
@@ -63,7 +63,7 @@ export default function InfoBox({ sessionMode, transportMode, context }: InfoBox
 
   // context === 'vote'
   return (
-    <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm border-l-4" style={{ borderLeftColor: 'var(--drk)' }}>
+    <div className="drk-panel p-6 mb-4 border-l-4" style={{ borderLeftColor: 'var(--drk)' }}>
       <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text)' }}>
         Neue Abstimmung starten
       </h3>

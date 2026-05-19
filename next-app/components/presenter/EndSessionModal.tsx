@@ -45,7 +45,7 @@ export default function EndSessionModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="end-session-title"
-        className="bg-white rounded-[10px] p-8 shadow-lg max-w-md w-full mx-4"
+        className="drk-panel p-8 shadow-lg max-w-md w-full mx-4"
         style={{ animation: 'pulse-in 0.25s ease-out' }}
       >
         <h2 id="end-session-title" className="text-xl font-bold mb-3" style={{ color: 'var(--text)' }}>

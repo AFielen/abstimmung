@@ -62,7 +62,7 @@ export default function ActiveVote({
   const progressPct = voterCount > 0 ? Math.min(100, (vote.totalCast / voterCount) * 100) : 0;
 
   return (
-    <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm">
+    <div className="drk-panel p-6 mb-4">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>

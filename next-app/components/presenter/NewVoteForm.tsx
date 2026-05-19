@@ -67,7 +67,7 @@ export default function NewVoteForm({ onStartVote }: NewVoteFormProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="bg-white rounded-[10px] p-6 mb-4 shadow-sm">
+      <div className="drk-panel p-6 mb-4">
         <h3 className="text-base font-bold mb-4" style={{ color: 'var(--text)' }}>
           Neue Abstimmung
         </h3>
