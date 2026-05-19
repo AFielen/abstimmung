@@ -106,13 +106,17 @@ export default async function DraftEditPage({
     .select({
       userId: memberships.userId,
       role: memberships.role,
+      status: memberships.status,
       email: users.email,
       name: users.name,
     })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
     .where(
-      and(eq(memberships.tenantId, ctx.tenant.id), eq(memberships.status, "active")),
+      and(
+        eq(memberships.tenantId, ctx.tenant.id),
+        inArray(memberships.status, ["active", "invited"]),
+      ),
     )
     .orderBy(asc(users.name), asc(users.email));
 
@@ -121,6 +125,7 @@ export default async function DraftEditPage({
     displayName: m.name ?? m.email,
     email: m.email,
     role: m.role,
+    status: m.status as "active" | "invited",
   }));
 
   // Vorschlag für Stimmberechtigte: aus letztem laufenden / abgeschlossenen

@@ -41,6 +41,7 @@ export type DraftMember = {
   displayName: string;
   email: string;
   role: string;
+  status: "active" | "invited";
 };
 
 function formatBytes(n: number): string {
@@ -746,9 +747,18 @@ function EligibilitySection({
           </button>
         </div>
 
+        <p
+          className="text-xs"
+          style={{ color: "var(--text-light)" }}
+        >
+          Eingeladene Mitglieder erhalten den Abstimmungslink automatisch,
+          sobald sie der KV-Einladung folgen.
+        </p>
+
         <ul className="flex flex-col gap-1 max-h-80 overflow-y-auto">
           {members.map((m) => {
             const checked = selected.has(m.userId);
+            const isInvited = m.status === "invited";
             return (
               <li key={m.userId}>
                 <label
@@ -764,9 +774,24 @@ function EligibilitySection({
                   />
                   <span className="flex-1">
                     <span className="font-medium">{m.displayName}</span>
-                    <span className="text-xs ml-2" style={{ color: "var(--text-light)" }}>
+                    <span
+                      className="text-xs ml-2"
+                      style={{ color: "var(--text-light)" }}
+                    >
                       {m.email} · {m.role}
                     </span>
+                    {isInvited ? (
+                      <span
+                        className="text-xs ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5"
+                        style={{
+                          background: "var(--drk-bg)",
+                          color: "var(--drk)",
+                        }}
+                        title="Mitglied hat die KV-Einladung noch nicht angenommen"
+                      >
+                        ⏳ Eingeladen
+                      </span>
+                    ) : null}
                   </span>
                 </label>
               </li>
