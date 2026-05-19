@@ -13,8 +13,9 @@ export async function GET(
   const { token } = await params;
   const consumed = await consumeMagicToken(token);
 
+  const baseUrl = process.env.APP_URL ?? req.url;
   if (!consumed) {
-    return NextResponse.redirect(new URL("/login?error=invalid", req.url));
+    return NextResponse.redirect(new URL("/login?error=invalid", baseUrl));
   }
 
   // Stelle sicher, dass ein User existiert
@@ -72,5 +73,5 @@ export async function GET(
     redirectTo = "/";
   }
 
-  return NextResponse.redirect(new URL(redirectTo, req.url));
+  return NextResponse.redirect(new URL(redirectTo, baseUrl));
 }
