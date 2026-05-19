@@ -28,6 +28,63 @@ services:
       start_period: 10s
       retries: 3
 
+  rundlauf:
+    container_name: rundlauf
+    build:
+      context: ./rundlauf-app
+    restart: unless-stopped
+    depends_on:
+      rundlauf-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+      SESSION_SECRET: ${SESSION_SECRET}
+      MAILJET_API_KEY: ${MAILJET_API_KEY}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
+      APP_URL: ${RUNDLAUF_APP_URL:-https://rundlauf.drk-abstimmung.de}
+      SUPERADMIN_EMAILS: ${SUPERADMIN_EMAILS}
+      RETENTION_YEARS: ${RETENTION_YEARS:-10}
+    volumes:
+      - rundlauf-protokolle:/data/protokolle
+    networks:
+      - caddy-net
+
+  rundlauf-db:
+    container_name: rundlauf-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rundlauf
+      POSTGRES_PASSWORD: ${RUNDLAUF_DB_PASSWORD:-rundlauf}
+      POSTGRES_DB: rundlauf
+    volumes:
+      - rundlauf-pgdata:/var/lib/postgresql/data
+    networks:
+      - caddy-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rundlauf -d rundlauf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rundlauf-retention:
+    container_name: rundlauf-retention
+    build:
+      context: ./rundlauf-app
+    restart: unless-stopped
+    depends_on:
+      rundlauf-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+      RETENTION_YEARS: ${RETENTION_YEARS:-10}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do npx --no-install tsx ./lib/cron/retention.ts || true; sleep 86400; done"]
+    networks:
+      - caddy-net
+
   # Dev profile: expose ports for local development without Caddy
   abstimmung-dev:
     container_name: abstimmung-dev
@@ -49,6 +106,53 @@ services:
     restart: unless-stopped
     profiles:
       - dev
+
+  rundlauf-dev:
+    container_name: rundlauf-dev
+    build:
+      context: ./rundlauf-app
+    ports:
+      - "3001:3000"
+    depends_on:
+      rundlauf-db-dev:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://rundlauf:rundlauf@rundlauf-db-dev:5432/rundlauf
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-please-replace-min-32-characters}
+      MAILJET_API_KEY: ${MAILJET_API_KEY}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
+      APP_URL: ${RUNDLAUF_APP_URL:-http://localhost:3001}
+      SUPERADMIN_EMAILS: ${SUPERADMIN_EMAILS}
+      RETENTION_YEARS: ${RETENTION_YEARS:-10}
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  rundlauf-db-dev:
+    container_name: rundlauf-db-dev
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: rundlauf
+      POSTGRES_PASSWORD: rundlauf
+      POSTGRES_DB: rundlauf
+    volumes:
+      - rundlauf-pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rundlauf -d rundlauf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - dev
+
+volumes:
+  rundlauf-pgdata:
+  rundlauf-pgdata-dev:
+  rundlauf-protokolle:
 
 networks:
   caddy-net:
