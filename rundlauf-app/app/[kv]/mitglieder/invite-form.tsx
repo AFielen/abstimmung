@@ -25,7 +25,7 @@ export function InviteForm({ kv }: { kv: string }) {
       <div>
         <label className="drk-label" htmlFor="role">Rolle</label>
         <select id="role" name="role" defaultValue="member" className="drk-input">
-          <option value="member">Mitglied (Präsidium)</option>
+          <option value="member">Gremiumsmitglied</option>
           <option value="admin">Administrator</option>
         </select>
       </div>

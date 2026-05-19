@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<string, string> = {
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
   admin: "Administrator",
-  member: "Mitglied",
+  member: "Gremiumsmitglied",
 };
 
 export function MemberRow({ kv, membershipId, email, name, role, status, canModify }: Props) {
@@ -86,7 +86,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
             style={{ padding: "0.4rem 0.6rem", width: "auto" }}
           >
             <option value="admin">Administrator</option>
-            <option value="member">Mitglied</option>
+            <option value="member">Gremiumsmitglied</option>
           </select>
         ) : (
           <span className="text-sm" style={{ color: "var(--text-light)" }}>
