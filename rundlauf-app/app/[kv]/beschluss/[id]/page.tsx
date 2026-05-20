@@ -20,6 +20,7 @@ import {
 import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
+import { VoterStatusPanel } from "./voter-status";
 
 export const dynamic = "force-dynamic";
 
@@ -383,6 +384,10 @@ export default async function ResolutionPage({
             Dieses Umlaufverfahren enthält keine Tagesordnungspunkte.
           </p>
         </section>
+      ) : null}
+
+      {ctx.isAdmin && (r.status === "laufend" || r.status === "abgeschlossen") ? (
+        <VoterStatusPanel resolutionId={r.id} topIds={topIds} />
       ) : null}
 
       {ctx.isAdmin && r.status === "laufend" ? (
