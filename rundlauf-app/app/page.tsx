@@ -127,6 +127,20 @@ function LandingPage() {
           <li>Beschlüsse anlegen, Stimmen einsammeln, Protokoll als PDF.</li>
         </ol>
       </section>
+
+      <section className="mt-6 drk-card">
+        <h3 className="font-bold mb-2">Sie suchen eine Live-Abstimmung?</h3>
+        <p className="text-sm mb-3" style={{ color: "var(--text-light)" }}>
+          Für Echtzeit-Abstimmungen in Versammlungen (mit QR-Code für
+          Teilnehmende) nutzen Sie das Schwester-Tool.
+        </p>
+        <a
+          href="https://drk-abstimmung.de/versammlung"
+          className="drk-btn-secondary inline-block"
+        >
+          Zur DRK Vereinsabstimmung →
+        </a>
+      </section>
     </div>
   );
 }
