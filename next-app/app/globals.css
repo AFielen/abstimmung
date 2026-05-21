@@ -480,9 +480,14 @@ body {
   }
 }
 
-/* Portal-Karten Hover */
+/* Portal-Karten */
+.portal-card {
+  border: 2px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+}
 .portal-card:hover {
-  border-color: var(--drk) !important;
+  border-color: var(--drk);
   transform: translateY(-2px);
   box-shadow: 0 12px 20px -4px rgba(0, 0, 0, 0.12), 0 6px 8px -4px rgba(0, 0, 0, 0.1);
 }

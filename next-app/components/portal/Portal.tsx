@@ -100,11 +100,6 @@ export default function Portal() {
         <Link
           href="/versammlung"
           className="drk-card portal-card group flex flex-col justify-between min-h-[200px] transition-all"
-          style={{
-            border: '2px solid var(--border)',
-            textDecoration: 'none',
-            color: 'var(--text)',
-          }}
         >
           <div>
             <div className="mb-3" style={{ color: 'var(--drk)' }}>
@@ -134,11 +129,6 @@ export default function Portal() {
         <a
           href="https://rundlauf.drk-abstimmung.de/"
           className="drk-card portal-card group flex flex-col justify-between min-h-[200px] transition-all"
-          style={{
-            border: '2px solid var(--border)',
-            textDecoration: 'none',
-            color: 'var(--text)',
-          }}
         >
           <div>
             <div className="mb-3" style={{ color: 'var(--drk)' }}>
