@@ -1,8 +1,9 @@
 'use client';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import PresenterApp from '@/components/presenter/PresenterApp';
 import VoterApp from '@/components/voter/VoterApp';
+import Portal from '@/components/portal/Portal';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 function AppContent() {
   const searchParams = useSearchParams();
@@ -17,12 +18,12 @@ function AppContent() {
       />
     );
   }
-  return <PresenterApp />;
+  return <Portal />;
 }
 
 export default function Home() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-4 border-[var(--border)] border-t-[var(--drk)] rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<LoadingSpinner />}>
       <AppContent />
     </Suspense>
   );
