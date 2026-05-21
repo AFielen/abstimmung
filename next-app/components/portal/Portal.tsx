@@ -99,7 +99,7 @@ export default function Portal() {
         {/* Card 1: Versammlung (internal) */}
         <Link
           href="/versammlung"
-          className="drk-card portal-card group flex flex-col justify-between min-h-[200px] transition-all"
+          className="drk-card portal-card flex flex-col justify-between min-h-[200px]"
         >
           <div>
             <div className="mb-3" style={{ color: 'var(--drk)' }}>
@@ -128,7 +128,7 @@ export default function Portal() {
         {/* Card 2: Rundlaufbeschluss (external subdomain) */}
         <a
           href="https://rundlauf.drk-abstimmung.de/"
-          className="drk-card portal-card group flex flex-col justify-between min-h-[200px] transition-all"
+          className="drk-card portal-card flex flex-col justify-between min-h-[200px]"
         >
           <div>
             <div className="mb-3" style={{ color: 'var(--drk)' }}>
