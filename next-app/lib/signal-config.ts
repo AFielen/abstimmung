@@ -5,6 +5,12 @@ export interface SignalConfig {
   secure: boolean;
 }
 
+// Accept both https:/wss: (secure) and http:/ws: (insecure) so a misconfigured
+// SIGNAL_URL with the wss:// scheme still resolves to a working WSS connection.
+function isSecureScheme(protocol: string): boolean {
+  return protocol === 'https:' || protocol === 'wss:';
+}
+
 /**
  * Resolve PeerJS signaling server config.
  *
@@ -24,7 +30,7 @@ export function getSignalConfig(): SignalConfig | null {
         host: url.hostname,
         ...(url.port ? { port: parseInt(url.port, 10) } : {}),
         path: '/',
-        secure: url.protocol === 'https:',
+        secure: isSecureScheme(url.protocol),
       };
     } catch {
       console.warn('Invalid NEXT_PUBLIC_SIGNAL_SERVER_URL:', envUrl);
@@ -55,7 +61,7 @@ export function getWsRelayUrl(): string {
   if (envUrl) {
     try {
       const url = new URL(envUrl);
-      const wsProto = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsProto = isSecureScheme(url.protocol) ? 'wss:' : 'ws:';
       const port = url.port ? `:${url.port}` : '';
       return `${wsProto}//${url.hostname}${port}/ws`;
     } catch {
