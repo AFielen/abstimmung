@@ -35,10 +35,6 @@ export function CollapsibleMarkdown({
   }, [markdown]);
 
   useLayoutEffect(() => {
-    if (forceExpanded) {
-      setNeedsCollapse(false);
-      return;
-    }
     const el = contentRef.current;
     if (!el) return;
     const collapsedHeight = collapsedLines * LINE_HEIGHT_PX;
