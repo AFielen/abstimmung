@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
-import DOMPurify from "dompurify";
+import DOMPurify from "isomorphic-dompurify";
 
 type Props = {
   markdown: string | null | undefined;
@@ -27,7 +27,7 @@ export function CollapsibleMarkdown({
 
   const html = useMemo(() => {
     if (!markdown) return "";
-    const raw = marked.parse(markdown, { async: false, gfm: true, breaks: false }) as string;
+    const raw = marked.parse(markdown, { async: false, gfm: true, breaks: true }) as string; // breaks:true — single \n → <br>, erhält Zeilenumbrüche aus Bestand-Plaintext
     return DOMPurify.sanitize(raw, {
       ALLOWED_TAGS,
       ALLOWED_ATTR: [],
