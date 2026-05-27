@@ -2,8 +2,8 @@
 
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "tiptap-markdown";
-import { useEffect, useRef, useState } from "react";
+import { Markdown, type MarkdownStorage } from "tiptap-markdown";
+import { useRef } from "react";
 
 type Props = {
   name: string;
@@ -22,7 +22,6 @@ export function RichTextEditor({
 }: Props) {
   const initial = defaultValue ?? "";
   const hiddenRef = useRef<HTMLInputElement | null>(null);
-  const [value, setValue] = useState<string>(initial);
 
   const editor = useEditor({
     immediatelyRender: false, // verhindert SSR/Hydration-Mismatch
@@ -49,17 +48,10 @@ export function RichTextEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      // tiptap-markdown exponiert editor.storage.markdown.getMarkdown()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const md = (editor.storage as any).markdown.getMarkdown() as string;
-      setValue(md);
+      const md = (editor.storage as unknown as { markdown: MarkdownStorage }).markdown.getMarkdown();
+      if (hiddenRef.current) hiddenRef.current.value = md;
     },
   });
-
-  // Falls die Form per JS submitted wird, ist `value` immer aktuell.
-  useEffect(() => {
-    if (hiddenRef.current) hiddenRef.current.value = value;
-  }, [value]);
 
   if (!editor) {
     // SSR-Fallback: rendert hidden input mit initial-Wert, damit das Feld bei
@@ -79,6 +71,8 @@ export function RichTextEditor({
         <button
           type="button"
           data-active={editor.isActive("bold")}
+          aria-label="Fett"
+          aria-pressed={editor.isActive("bold")}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().toggleBold().run()}
           title="Fett (Strg+B)"
@@ -88,6 +82,8 @@ export function RichTextEditor({
         <button
           type="button"
           data-active={editor.isActive("italic")}
+          aria-label="Kursiv"
+          aria-pressed={editor.isActive("italic")}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           title="Kursiv (Strg+I)"
@@ -97,6 +93,8 @@ export function RichTextEditor({
         <button
           type="button"
           data-active={editor.isActive("bulletList")}
+          aria-label="Aufzählung"
+          aria-pressed={editor.isActive("bulletList")}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           title="Aufzählung"
@@ -106,6 +104,8 @@ export function RichTextEditor({
         <button
           type="button"
           data-active={editor.isActive("orderedList")}
+          aria-label="Nummerierte Liste"
+          aria-pressed={editor.isActive("orderedList")}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           title="Nummerierte Liste"
