@@ -57,13 +57,36 @@ export async function sendInviteLink(opts: {
   rawToken: string;
 }) {
   const link = `${appUrl()}/auth/magic/${opts.rawToken}`;
-  const text = `Hallo,\n\n${opts.inviterName} hat dich in den Kreisverband "${opts.tenantName}" eingeladen.\n\nMit folgendem Link nimmst du die Einladung an:\n${link}\n\nDer Link ist 7 Tage gültig.`;
+  const greetingName = opts.to.name ? ` ${opts.to.name}` : "";
+
+  const text = [
+    `Hallo${greetingName},`,
+    "",
+    `${opts.inviterName} hat dich eingeladen, im Kreisverband "${opts.tenantName}" an digitalen Umlaufbeschlüssen mitzuwirken.`,
+    "",
+    "DRK Rundlaufbeschlüsse ist das Online-Tool, mit dem die Gremien des Deutschen Roten Kreuzes rechtssicher und transparent zwischen Sitzungen über Beschlussvorlagen abstimmen.",
+    "",
+    "So nimmst du die Einladung an:",
+    link,
+    "",
+    "Nach dem Klick bist du direkt angemeldet – ein Passwort wird nicht benötigt. Der Link ist 7 Tage gültig.",
+    "",
+    "Falls du diese Einladung nicht erwartest, kannst du diese E-Mail einfach ignorieren. Ohne Klick passiert nichts.",
+  ].join("\n");
+
+  const greetingHtml = opts.to.name
+    ? `Hallo <strong>${opts.to.name}</strong>,`
+    : "Hallo,";
+
   const html = HTML_WRAPPER(
     `Einladung in ${opts.tenantName}`,
-    `<p><strong>${opts.inviterName}</strong> hat dich in den Kreisverband <strong>${opts.tenantName}</strong> eingeladen.</p>
+    `<p>${greetingHtml}</p>
+     <p><strong>${opts.inviterName}</strong> hat dich eingeladen, im Kreisverband <strong>${opts.tenantName}</strong> an digitalen Umlaufbeschlüssen mitzuwirken.</p>
+     <p>DRK Rundlaufbeschlüsse ist das Online-Tool, mit dem die Gremien des Deutschen Roten Kreuzes rechtssicher und transparent zwischen Sitzungen über Beschlussvorlagen abstimmen.</p>
      <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Einladung annehmen</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${link}</p>
-     <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist 7 Tage gültig.</p>`,
+     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">Oder kopiere diesen Link in deinen Browser:<br>${link}</p>
+     <p style="font-size: 0.85rem; color: #6b7280;">Nach dem Klick bist du direkt angemeldet – ein Passwort wird nicht benötigt. Der Link ist <strong>7 Tage</strong> gültig.</p>
+     <p style="font-size: 0.85rem; color: #6b7280;">Falls du diese Einladung nicht erwartest, kannst du diese E-Mail einfach ignorieren – ohne Klick passiert nichts.</p>`,
   );
   await sendMail({ to: opts.to, subject: `Einladung zu ${opts.tenantName}`, text, html });
 }
