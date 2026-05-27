@@ -12,6 +12,13 @@ import {
   updateResolutionMeta,
   type ActionState,
 } from "./actions";
+import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(
+  () => import("../../../_components/rich-text-editor").then((m) => m.RichTextEditor),
+  { ssr: false, loading: () => <div className="rich-text-editor" style={{ minHeight: "16rem" }} /> },
+);
 
 const initial: ActionState = { ok: false };
 
@@ -364,15 +371,23 @@ function TopCard({
           </div>
         </div>
         {top.beschlussvorschlagMd ? (
-          <div className="mt-3 whitespace-pre-wrap text-sm">
+          <div className="mt-3 text-sm">
             <strong>Beschlussvorschlag:</strong>
-            <div className="mt-1">{top.beschlussvorschlagMd}</div>
+            <CollapsibleMarkdown
+              markdown={top.beschlussvorschlagMd}
+              collapsedLines={10}
+              className="mt-1"
+            />
           </div>
         ) : null}
         {top.sachlageMd ? (
-          <div className="mt-3 whitespace-pre-wrap text-sm">
+          <div className="mt-3 text-sm">
             <strong>Sachlage:</strong>
-            <div className="mt-1">{top.sachlageMd}</div>
+            <CollapsibleMarkdown
+              markdown={top.sachlageMd}
+              collapsedLines={10}
+              className="mt-1"
+            />
           </div>
         ) : null}
         {top.finanzielleAuswirkungen ? (
@@ -459,22 +474,20 @@ function TopFields({
         <label className="drk-label">
           Beschlussvorschlag <span style={{ color: "var(--drk)" }}>*</span>
         </label>
-        <textarea
+        <RichTextEditor
           name="beschlussvorschlag"
-          required
-          rows={4}
           defaultValue={defaultBeschluss}
-          className="drk-input"
+          required
+          ariaLabel="Beschlussvorschlag"
           placeholder="Konkrete Beschlussfassung, über die abgestimmt wird."
         />
       </div>
       <div>
         <label className="drk-label">Sachlage / Erläuterung</label>
-        <textarea
+        <RichTextEditor
           name="sachlage"
-          rows={4}
           defaultValue={defaultSachlage}
-          className="drk-input"
+          ariaLabel="Sachlage"
           placeholder="Hintergrund, Sachstand, Begründung."
         />
       </div>
