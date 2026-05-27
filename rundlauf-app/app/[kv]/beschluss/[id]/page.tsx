@@ -21,6 +21,7 @@ import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
 import { VoterStatusPanel } from "./voter-status";
+import { ResolutionStatus } from "../../_components/resolution-status";
 
 export const dynamic = "force-dynamic";
 
@@ -240,6 +241,21 @@ export default async function ResolutionPage({
               </div>
             </div>
 
+            <div className="mt-2 mb-4">
+              <ResolutionStatus
+                result={result}
+                quorumPct={top.quorumPct}
+                closure={
+                  stoppedEarly
+                    ? {
+                        status: r.status as "abgeschlossen" | "zurueckgezogen",
+                        accepted: result.accepted,
+                      }
+                    : null
+                }
+              />
+            </div>
+
             {top.beschlussvorschlagMd ? (
               <div className="mt-3">
                 <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
@@ -325,55 +341,6 @@ export default async function ResolutionPage({
                 )}
               </div>
             ) : null}
-
-            <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-              <h3 className="font-bold mb-2">Stand</h3>
-              <div className="grid sm:grid-cols-3 gap-3 mb-3">
-                <Stat label="Abgegeben"
-                  value={`${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`}
-                  tone={result.quorumReached ? "success" : "warning"} />
-                <Stat label="Quorum"
-                  value={result.quorumReached ? "Erreicht" : `Min. ${top.quorumPct} %`}
-                  tone={result.quorumReached ? "success" : "warning"} />
-                <Stat label="Mehrheit"
-                  value={result.majorityReached ? "Erreicht" : "Verfehlt"}
-                  tone={result.majorityReached ? "success" : "warning"} />
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ color: "var(--text-light)" }}>
-                    <th className="text-left py-2">Option</th>
-                    <th className="text-right py-2">Stimmen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.perOption.map((o) => (
-                    <tr key={o.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                      <td className="py-2">{o.label}</td>
-                      <td className="text-right py-2 font-mono">{o.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {stoppedEarly ? (
-                <div
-                  className="mt-3 rounded-lg p-3 text-sm"
-                  style={{
-                    background: result.accepted ? "var(--success-bg)" : "var(--drk-bg)",
-                    color: result.accepted ? "var(--success)" : "var(--drk)",
-                  }}
-                >
-                  <strong>
-                    {r.status === "zurueckgezogen"
-                      ? "Verfahren zurückgezogen"
-                      : result.accepted
-                        ? "Angenommen"
-                        : "Abgelehnt / Quorum verfehlt"}
-                  </strong>
-                </div>
-              ) : null}
-            </div>
           </section>
         );
       })}
@@ -442,27 +409,6 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "success" | "warning";
-}) {
-  const bg =
-    tone === "success" ? "var(--success-bg)" : tone === "warning" ? "var(--warning-bg)" : "var(--bg)";
-  const color =
-    tone === "success" ? "var(--success)" : tone === "warning" ? "#b45309" : "var(--text)";
-  return (
-    <div className="rounded-lg p-3" style={{ background: bg, color }}>
-      <div className="text-xs uppercase tracking-wide">{label}</div>
-      <div className="text-base font-bold mt-1">{value}</div>
-    </div>
-  );
 }
 
 function statusLabel(s: string) {

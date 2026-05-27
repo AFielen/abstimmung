@@ -1,8 +1,13 @@
 import Link from "next/link";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { agendaItems, resolutions } from "@/lib/db/schema";
+import { agendaItems, eligibleVoters, resolutions, votes } from "@/lib/db/schema";
+import {
+  computeAgendaItemResult,
+  type ResolutionResult,
+} from "@/lib/resolution";
 import { requireTenantContext } from "@/lib/tenant";
+import { ResolutionStatus } from "./_components/resolution-status";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +25,14 @@ const STATUS_BADGE: Record<string, string> = {
   zurueckgezogen: "drk-badge-warning",
 };
 
+type TopResult = {
+  topId: string;
+  ordinal: number;
+  titel: string;
+  quorumPct: number;
+  result: ResolutionResult;
+};
+
 type ListItem = {
   id: string;
   betreff: string;
@@ -27,9 +40,13 @@ type ListItem = {
   fristEnde: Date;
   topCount: number;
   firstTopTitel: string | null;
+  topResults: TopResult[];
 };
 
-async function loadResolutions(where: ReturnType<typeof and>): Promise<ListItem[]> {
+async function loadResolutions(
+  where: ReturnType<typeof and>,
+  opts: { withResults: boolean } = { withResults: false },
+): Promise<ListItem[]> {
   const rows = await db
     .select({
       id: resolutions.id,
@@ -48,10 +65,13 @@ async function loadResolutions(where: ReturnType<typeof and>): Promise<ListItem[
   const ids = rows.map((r) => r.id);
   const topsRows = await db
     .select({
+      id: agendaItems.id,
       resolutionId: agendaItems.resolutionId,
       ordinal: agendaItems.ordinal,
       titel: agendaItems.titel,
-      c: sql<number>`count(*) over (partition by ${agendaItems.resolutionId})::int`,
+      optionen: agendaItems.optionen,
+      quorumPct: agendaItems.quorumPct,
+      mehrheit: agendaItems.mehrheit,
     })
     .from(agendaItems)
     .where(inArray(agendaItems.resolutionId, ids));
@@ -59,8 +79,59 @@ async function loadResolutions(where: ReturnType<typeof and>): Promise<ListItem[
   const counts = new Map<string, number>();
   const firstTitel = new Map<string, string>();
   for (const t of topsRows) {
-    counts.set(t.resolutionId, t.c);
+    counts.set(t.resolutionId, (counts.get(t.resolutionId) ?? 0) + 1);
     if (t.ordinal === 1) firstTitel.set(t.resolutionId, t.titel);
+  }
+
+  const resultsByResolution = new Map<string, TopResult[]>();
+  if (opts.withResults && topsRows.length > 0) {
+    const topIds = topsRows.map((t) => t.id);
+    const voteRows = await db
+      .select({
+        agendaItemId: votes.agendaItemId,
+        optionId: votes.optionId,
+        c: sql<number>`count(*)::int`,
+      })
+      .from(votes)
+      .where(inArray(votes.agendaItemId, topIds))
+      .groupBy(votes.agendaItemId, votes.optionId);
+
+    const countsByTop = new Map<string, Record<string, number>>();
+    for (const v of voteRows) {
+      if (!countsByTop.has(v.agendaItemId)) countsByTop.set(v.agendaItemId, {});
+      countsByTop.get(v.agendaItemId)![v.optionId] = v.c;
+    }
+
+    const eligibleRows = await db
+      .select({
+        resolutionId: eligibleVoters.resolutionId,
+        c: sql<number>`count(*)::int`,
+      })
+      .from(eligibleVoters)
+      .where(inArray(eligibleVoters.resolutionId, ids))
+      .groupBy(eligibleVoters.resolutionId);
+    const eligibleByResolution = new Map<string, number>();
+    for (const e of eligibleRows) {
+      eligibleByResolution.set(e.resolutionId, e.c);
+    }
+
+    const sortedTops = [...topsRows].sort((a, b) => a.ordinal - b.ordinal);
+    for (const t of sortedTops) {
+      const result = computeAgendaItemResult({
+        agendaItem: { optionen: t.optionen, quorumPct: t.quorumPct, mehrheit: t.mehrheit },
+        eligibleCount: eligibleByResolution.get(t.resolutionId) ?? 0,
+        voteCounts: countsByTop.get(t.id) ?? {},
+      });
+      const list = resultsByResolution.get(t.resolutionId) ?? [];
+      list.push({
+        topId: t.id,
+        ordinal: t.ordinal,
+        titel: t.titel,
+        quorumPct: t.quorumPct,
+        result,
+      });
+      resultsByResolution.set(t.resolutionId, list);
+    }
   }
 
   return rows.map((r) => ({
@@ -70,6 +141,7 @@ async function loadResolutions(where: ReturnType<typeof and>): Promise<ListItem[
     fristEnde: r.fristEnde,
     topCount: counts.get(r.id) ?? 0,
     firstTopTitel: firstTitel.get(r.id) ?? null,
+    topResults: resultsByResolution.get(r.id) ?? [],
   }));
 }
 
@@ -83,6 +155,7 @@ export default async function TenantDashboard({
 
   const running = await loadResolutions(
     and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
+    { withResults: true },
   );
   const drafts = ctx.isAdmin
     ? await loadResolutions(
@@ -105,7 +178,7 @@ export default async function TenantDashboard({
         {running.length === 0 ? (
           <Empty>Aktuell keine laufenden Umlaufverfahren.</Empty>
         ) : (
-          <ResolutionList items={running} kv={kv} />
+          <ResolutionList items={running} kv={kv} showResults />
         )}
       </Section>
 
@@ -139,9 +212,17 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p style={{ color: "var(--text-light)" }}>{children}</p>;
 }
 
-function ResolutionList({ items, kv }: { items: ListItem[]; kv: string }) {
+function ResolutionList({
+  items,
+  kv,
+  showResults = false,
+}: {
+  items: ListItem[];
+  kv: string;
+  showResults?: boolean;
+}) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-3">
       {items.map((r) => {
         const title =
           r.betreff.trim() ||
@@ -152,11 +233,14 @@ function ResolutionList({ items, kv }: { items: ListItem[]; kv: string }) {
             ? `/${kv}/beschluss/${r.id}/bearbeiten`
             : `/${kv}/beschluss/${r.id}`;
         return (
-          <li key={r.id}>
+          <li
+            key={r.id}
+            className="rounded-xl border overflow-hidden"
+            style={{ borderColor: "var(--border)" }}
+          >
             <Link
               href={href}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-4 hover:bg-gray-50 transition-colors"
-              style={{ borderColor: "var(--border)" }}
+              className="flex flex-wrap items-center justify-between gap-2 p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="min-w-0">
                 <div className="font-bold break-words">{title}</div>
@@ -169,6 +253,26 @@ function ResolutionList({ items, kv }: { items: ListItem[]; kv: string }) {
                 {STATUS_LABEL[r.status] ?? r.status}
               </span>
             </Link>
+            {showResults && r.topResults.length > 0 ? (
+              <div
+                className="border-t p-4 flex flex-col gap-4"
+                style={{ borderColor: "var(--border)", background: "var(--bg)" }}
+              >
+                {r.topResults.map((t) => (
+                  <ResolutionStatus
+                    key={t.topId}
+                    result={t.result}
+                    quorumPct={t.quorumPct}
+                    variant="compact"
+                    topLabel={
+                      r.topResults.length > 1
+                        ? `TOP ${t.ordinal} — ${t.titel}`
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
           </li>
         );
       })}
