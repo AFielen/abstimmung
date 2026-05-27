@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
@@ -14,24 +14,20 @@ type Props = {
 const ALLOWED_TAGS = ["p", "br", "strong", "em", "b", "i", "ul", "ol", "li"];
 const LINE_HEIGHT_PX = 24; // muss zu .rich-text-content line-height passen
 
-marked.setOptions({
-  gfm: true,
-  breaks: false, // Soft-Break per Zeilenumbruch deaktiviert (wir nutzen <br> aus dem Editor)
-});
-
 export function CollapsibleMarkdown({
   markdown,
   collapsedLines = 10,
   forceExpanded = false,
   className,
 }: Props) {
+  const contentId = useId();
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [needsCollapse, setNeedsCollapse] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState<boolean | null>(null);
 
   const html = useMemo(() => {
     if (!markdown) return "";
-    const raw = marked.parse(markdown, { async: false }) as string;
+    const raw = marked.parse(markdown, { async: false, gfm: true, breaks: false }) as string;
     return DOMPurify.sanitize(raw, {
       ALLOWED_TAGS,
       ALLOWED_ATTR: [],
@@ -51,8 +47,9 @@ export function CollapsibleMarkdown({
 
   if (!markdown || !html) return null;
 
-  const showCollapsed = needsCollapse && !expanded && !forceExpanded;
-  const maxHeight = showCollapsed ? `${collapsedLines * LINE_HEIGHT_PX}px` : undefined;
+  const showCollapsed = needsCollapse === true && !expanded && !forceExpanded;
+  const isMeasuring = needsCollapse === null && !forceExpanded;
+  const maxHeight = (showCollapsed || isMeasuring) ? `${collapsedLines * LINE_HEIGHT_PX}px` : undefined;
 
   return (
     <div className={className}>
@@ -61,21 +58,25 @@ export function CollapsibleMarkdown({
         data-collapsed={showCollapsed ? "true" : "false"}
       >
         <div
+          id={contentId}
           ref={contentRef}
           className="rich-text-content"
           style={{
             maxHeight,
-            overflow: showCollapsed ? "hidden" : "visible",
+            overflow: (showCollapsed || isMeasuring) ? "hidden" : "visible",
+            visibility: isMeasuring ? "hidden" : undefined,
           }}
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>
-      {needsCollapse && !forceExpanded ? (
+      {needsCollapse === true && !forceExpanded ? (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="mt-1 text-xs underline"
           style={{ color: "var(--drk)" }}
+          aria-expanded={expanded}
+          aria-controls={contentId}
         >
           {expanded ? "Weniger anzeigen" : "Mehr anzeigen"}
         </button>
