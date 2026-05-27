@@ -13,19 +13,25 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
+    "dompurify": "^3.4.6",
     "drizzle-orm": "^0.36.4",
     "iron-session": "^8.0.4",
     "jspdf": "^4.2.0",
+    "marked": "^18.0.4",
     "next": "16.1.6",
     "papaparse": "^5.4.1",
     "postgres": "^3.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "read-excel-file": "^5.8.5",
+    "tiptap-markdown": "^0.9.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^19",
