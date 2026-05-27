@@ -81,9 +81,17 @@ services:
       DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
       RETENTION_YEARS: ${RETENTION_YEARS:-10}
     entrypoint: ["/bin/sh", "-c"]
-    command: ["while true; do npx --no-install tsx ./lib/cron/retention.ts || true; sleep 86400; done"]
+    # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
+    command: ["while true; do npx --no-install tsx ./lib/cron/retention.ts && touch /tmp/retention.last-success; sleep 86400; done"]
     networks:
       - caddy-net
+    # Überschreibt den HTTP-Healthcheck aus dem Dockerfile (kein Webserver im Cron-Container).
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/retention.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/retention.last-success))) -lt 90000 ]"]
+      interval: 30m
+      timeout: 10s
+      start_period: 2m
+      retries: 1
 
   # Dev profile: expose ports for local development without Caddy
   abstimmung-dev:

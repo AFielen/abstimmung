@@ -12,12 +12,13 @@
  *
  * Aufruf: `tsx lib/cron/retention.ts`
  */
-import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   agendaItems,
   auditLog,
   eligibleVoters,
+  magicTokens,
   resolutions,
   votes,
 } from "@/lib/db/schema";
@@ -92,18 +93,19 @@ async function main() {
 
   // 2) Magic-Tokens älter als 30 Tage löschen
   const tokenCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const tokenRes = await db.execute(
-    sql`DELETE FROM magic_tokens WHERE expires_at < ${tokenCutoff}`,
-  );
+  const tokenRes = await db
+    .delete(magicTokens)
+    .where(lt(magicTokens.expiresAt, tokenCutoff));
+  // postgres-js liefert `.count`, node-postgres `.rowCount` — defensiv beide prüfen.
   const tokensDeleted = (tokenRes as unknown as { count?: number; rowCount?: number }).count
     ?? (tokenRes as unknown as { rowCount?: number }).rowCount
     ?? 0;
   console.log(`[retention] Magic-Tokens gelöscht: ${tokensDeleted}`);
 
   // 3) Audit-Log älter als cutoff löschen
-  const auditRes = await db.execute(
-    sql`DELETE FROM audit_log WHERE created_at < ${cutoff}`,
-  );
+  const auditRes = await db
+    .delete(auditLog)
+    .where(lt(auditLog.createdAt, cutoff));
   const auditDeleted = (auditRes as unknown as { count?: number; rowCount?: number }).count
     ?? (auditRes as unknown as { rowCount?: number }).rowCount
     ?? 0;
