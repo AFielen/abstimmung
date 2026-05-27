@@ -5,6 +5,7 @@ import {
   parseOptions,
   type ResolutionResult,
 } from "@/lib/resolution";
+import { stripMarkdown } from "./markdown";
 
 type EligibleSnapshot = {
   userId: string;
@@ -203,13 +204,13 @@ function drawAgendaItem(
   y += 6;
   doc.setFont("helvetica", "normal");
 
-  // Beschlussvorschlag
+  // Beschlussvorschlag (Markdown → Plaintext für PDF)
   if (top.beschlussvorschlagMd) {
-    y = labeledBlock(doc, "Beschlussvorschlag", top.beschlussvorschlagMd, y);
+    y = labeledBlock(doc, "Beschlussvorschlag", stripMarkdown(top.beschlussvorschlagMd), y);
   }
-  // Sachlage
+  // Sachlage (Markdown → Plaintext für PDF)
   if (top.sachlageMd) {
-    y = labeledBlock(doc, "Sachlage", top.sachlageMd, y);
+    y = labeledBlock(doc, "Sachlage", stripMarkdown(top.sachlageMd), y);
   }
   if (top.finanzielleAuswirkungen) {
     y = labeledBlock(doc, "Finanzielle Auswirkungen", top.finanzielleAuswirkungen, y);
