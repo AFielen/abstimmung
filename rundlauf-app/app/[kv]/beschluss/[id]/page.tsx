@@ -22,6 +22,7 @@ import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
 import { VoterStatusPanel } from "./voter-status";
 import { ResolutionStatus } from "../../_components/resolution-status";
+import { CollapsibleMarkdown } from "../../_components/collapsible-markdown";
 
 export const dynamic = "force-dynamic";
 
@@ -261,7 +262,11 @@ export default async function ResolutionPage({
                 <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
                   Beschlussvorschlag
                 </div>
-                <div className="whitespace-pre-wrap mt-1">{top.beschlussvorschlagMd}</div>
+                <CollapsibleMarkdown
+                  markdown={top.beschlussvorschlagMd}
+                  collapsedLines={10}
+                  className="mt-1"
+                />
               </div>
             ) : null}
 
@@ -270,7 +275,11 @@ export default async function ResolutionPage({
                 <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
                   Sachlage
                 </div>
-                <div className="whitespace-pre-wrap mt-1 text-sm">{top.sachlageMd}</div>
+                <CollapsibleMarkdown
+                  markdown={top.sachlageMd}
+                  collapsedLines={10}
+                  className="mt-1"
+                />
               </div>
             ) : null}
 
