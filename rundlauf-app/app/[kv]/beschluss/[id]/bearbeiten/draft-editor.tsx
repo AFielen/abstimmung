@@ -12,6 +12,7 @@ import {
   updateResolutionMeta,
   type ActionState,
 } from "./actions";
+import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
 
 const initial: ActionState = { ok: false };
 
@@ -364,15 +365,23 @@ function TopCard({
           </div>
         </div>
         {top.beschlussvorschlagMd ? (
-          <div className="mt-3 whitespace-pre-wrap text-sm">
+          <div className="mt-3 text-sm">
             <strong>Beschlussvorschlag:</strong>
-            <div className="mt-1">{top.beschlussvorschlagMd}</div>
+            <CollapsibleMarkdown
+              markdown={top.beschlussvorschlagMd}
+              collapsedLines={10}
+              className="mt-1"
+            />
           </div>
         ) : null}
         {top.sachlageMd ? (
-          <div className="mt-3 whitespace-pre-wrap text-sm">
+          <div className="mt-3 text-sm">
             <strong>Sachlage:</strong>
-            <div className="mt-1">{top.sachlageMd}</div>
+            <CollapsibleMarkdown
+              markdown={top.sachlageMd}
+              collapsedLines={10}
+              className="mt-1"
+            />
           </div>
         ) : null}
         {top.finanzielleAuswirkungen ? (
