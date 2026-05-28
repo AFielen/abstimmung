@@ -50,6 +50,7 @@ services:
       - rundlauf-protokolle:/data/protokolle
     networks:
       - caddy-net
+      - rundlauf-int
 
   rundlauf-db:
     container_name: rundlauf-db
@@ -62,7 +63,7 @@ services:
     volumes:
       - rundlauf-pgdata:/var/lib/postgresql/data
     networks:
-      - caddy-net
+      - rundlauf-int
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rundlauf -d rundlauf"]
       interval: 10s
@@ -84,7 +85,7 @@ services:
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
     command: ["while true; do npx --no-install tsx ./lib/cron/retention.ts && touch /tmp/retention.last-success; sleep 86400; done"]
     networks:
-      - caddy-net
+      - rundlauf-int
     # Überschreibt den HTTP-Healthcheck aus dem Dockerfile (kein Webserver im Cron-Container).
     healthcheck:
       test: ["CMD-SHELL", "[ -f /tmp/retention.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/retention.last-success))) -lt 90000 ]"]
@@ -112,7 +113,7 @@ services:
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
     command: ["while true; do npx --no-install tsx ./lib/cron/reminders.ts && touch /tmp/reminders.last-success; sleep 86400; done"]
     networks:
-      - caddy-net
+      - rundlauf-int
     # Überschreibt den HTTP-Healthcheck aus dem Dockerfile (kein Webserver im Cron-Container).
     healthcheck:
       test: ["CMD-SHELL", "[ -f /tmp/reminders.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/reminders.last-success))) -lt 90000 ]"]
@@ -193,3 +194,5 @@ volumes:
 networks:
   caddy-net:
     external: true
+  rundlauf-int:
+    driver: bridge
