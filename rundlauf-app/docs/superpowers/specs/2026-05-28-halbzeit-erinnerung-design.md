@@ -82,8 +82,8 @@ Die fachliche Logik wird in zwei Schichten getrennt:
 
 - **`lib/reminders.ts` (pure, testbar):** `isPastHalftime(startedAt, fristEnde, now)`
   und die Einstufung eines Stimmberechtigten in `"skip" | "vote_reminder" |
-  "invite_reminder"` anhand von Membership-Status und Stimmenzahl. Keine
-  DB-/Mail-Seiteneffekte.
+  "invite_reminder"` anhand von Membership-Status, Stimmenzahl, `inviteEmailSentAt`
+  und Halbzeit-Zeitpunkt. Keine DB-/Mail-Seiteneffekte.
 - **`lib/cron/reminders.ts` (orchestrierend):** Lädt Kandidaten aus der DB,
   ruft die pure Logik, versendet Mails, setzt Marker, schreibt Audit-Log.
 
@@ -123,10 +123,13 @@ vor Frist und unvollständig abgestimmt.
         WHERE reminder_email_sent_at IS NULL
    d. votesPerUser = count(distinct agendaItemId) je userId über tops
    e. Pro Kandidat → Einstufung (pure):
-        - membership removed / nicht vorhanden  → "skip"
-        - votesPerUser >= topCount               → "skip" (vollständig)
-        - membership active                      → "vote_reminder"
-        - membership invited                     → "invite_reminder"
+        - membership removed / nicht vorhanden        → "skip"
+        - votesPerUser >= topCount                     → "skip" (vollständig)
+        - membership invited                           → "invite_reminder"
+        - membership active:
+            - inviteEmailSentAt != null && >= halftime → "skip" (gerade erst
+              beigetreten/benachrichtigt, hatte noch keine Vorlaufzeit)
+            - sonst (inviteEmailSentAt < halftime oder NULL) → "vote_reminder"
 3. invite_reminder über alle Verfahren hinweg je (tenantId, userId)
    deduplizieren → genau eine frische Einladungs-Mail pro wartender Person.
 4. Versand:
@@ -145,6 +148,24 @@ sie **einen** frischen Link bekommen, nicht mehrere identische Mails. Der Marker
 wird trotzdem für all ihre `eligible_voters`-Zeilen gesetzt, damit kein Verfahren
 sie erneut anstößt. Beim späteren Beitritt verschickt der bestehende
 Pending-Invite-Hook die eigentlichen Beschluss-Einladungen.
+
+### Guard: kein Vote-Reminder bei spätem Beitritt
+
+Tritt ein Mitglied **erst nach der Halbzeit** bei, hat der Pending-Invite-Hook
+gerade eben (beim Beitritt) die Beschluss-Einladung verschickt und
+`inviteEmailSentAt` auf ~jetzt gesetzt. Ein zusätzlicher Vote-Reminder am
+Folgetag wäre eine Doppel-Mail ohne echte Vorlaufzeit.
+
+Der Guard knüpft an die ohnehin berechnete Halbzeit an: Ein aktives Mitglied
+bekommt einen `vote_reminder` **nur**, wenn seine Beschluss-Einladung **vor**
+der Halbzeit verschickt wurde — also `inviteEmailSentAt < halftime`. Ist
+`inviteEmailSentAt >= halftime`, wird es übersprungen (es hatte den frischen
+Versand gerade erst).
+
+`inviteEmailSentAt = NULL` bei einem aktiven Mitglied ist eine Anomalie (der
+Versand beim Beitritt schlug fehl) — in dem Fall wird **nicht** übersprungen:
+Der `vote_reminder` ist dann die erste verlässliche Benachrichtigung und dient
+als Sicherheitsnetz.
 
 ## Schema-Änderung
 
@@ -207,7 +228,8 @@ Touch-Marker (`/tmp/reminders.last-success`) für den Healthcheck. Build-Context
 | Mitglied hat nur einen Teil der TOPs | unvollständig → `vote_reminder`. |
 | Eingeladenes Mitglied (nie beigetreten) | `invite_reminder` mit frischem Token; KV-weit dedupliziert. |
 | Mitglied entfernt (`status = removed`) vor Beitritt | „skip", kein Versand. Marker bleibt `NULL` (harmlos). |
-| Mitglied tritt erst nach Halbzeit bei | Beitritts-Hook schickt initiale Beschluss-Einladung. Der nächste Cron-Lauf würde es zusätzlich als `vote_reminder` selektieren. **Akzeptiert** (kleine, seltene Redundanz; alternativ später Guard „Einladung jünger als X" nachrüsten). |
+| Mitglied tritt erst nach Halbzeit bei | Beitritts-Hook setzt `inviteEmailSentAt ≈ jetzt` (≥ halftime). Guard greift → `vote_reminder` wird übersprungen, keine Doppel-Mail. |
+| Aktives Mitglied, `inviteEmailSentAt` NULL (Versand beim Beitritt fehlgeschlagen) | Guard greift **nicht** → `vote_reminder` als Sicherheitsnetz (erste verlässliche Benachrichtigung). |
 | Person in mehreren laufenden Verfahren | aktiv: je Verfahren ein `vote_reminder`. eingeladen: **ein** `invite_reminder` (dedupliziert), Marker für alle Zeilen. |
 | Mailjet wirft beim Versand | Marker bleibt `NULL` → nächster Tageslauf versucht erneut (solange `laufend` + vor Frist). Fehler wird geloggt, bricht den Lauf nicht ab. |
 | `startedAt` ist `NULL` | übersprungen (kann bei `laufend` nicht auftreten, defensiv). |
@@ -247,6 +269,9 @@ Manuelle Testfälle:
 5. Verfahren über Frist (aber Status `laufend`) → kein Versand.
 6. D in zwei laufenden Verfahren über Halbzeit → genau **eine** Invite-Mail,
    Marker in beiden Verfahren gesetzt.
+7. Guard: Mitglied tritt nach Halbzeit bei (`inviteEmailSentAt ≥ halftime`) →
+   kein Vote-Reminder. Mitglied, das vor Halbzeit benachrichtigt wurde
+   (`inviteEmailSentAt < halftime`) und unvollständig ist → Vote-Reminder.
 
 ## Rollout
 
@@ -264,7 +289,5 @@ drk-abstimmung kann reale Nutzer haben — vorsichtig ausrollen:
 
 ## Offene Punkte
 
-- Guard „Mitglied gerade erst beigetreten" (gegen Doppel-Mail nach spätem
-  Beitritt) bewusst vertagt — seltener Fall, geringe Auswirkung.
 - Falls in der Praxis eine zweite Erinnerung kurz vor Frist gewünscht ist,
   später ein weiteres Marker-Feld/Schwellwert ergänzen.
