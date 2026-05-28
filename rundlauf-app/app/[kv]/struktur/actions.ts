@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
@@ -78,6 +78,21 @@ export async function deleteOrganization(
   )[0];
   if (!org || org.tenantId !== ctx.tenant.id) {
     return { ok: false, message: "Organisation nicht gefunden" };
+  }
+
+  const beschluss = (
+    await db
+      .select({ id: resolutions.id })
+      .from(resolutions)
+      .innerJoin(bodies, eq(resolutions.bodyId, bodies.id))
+      .where(eq(bodies.organizationId, org.id))
+      .limit(1)
+  )[0];
+  if (beschluss) {
+    return {
+      ok: false,
+      message: "Organisation hat Gremien mit Beschlüssen und kann nicht gelöscht werden. Erst Gremien aufräumen/ablösen.",
+    };
   }
 
   await db.delete(organizations).where(eq(organizations.id, org.id));
@@ -174,6 +189,20 @@ export async function archiveBody(
   )[0];
   if (!body || body.tenantId !== ctx.tenant.id) {
     return { ok: false, message: "Gremium nicht gefunden" };
+  }
+
+  const offen = (
+    await db
+      .select({ id: resolutions.id })
+      .from(resolutions)
+      .where(and(eq(resolutions.bodyId, body.id), inArray(resolutions.status, ["draft", "laufend"])))
+      .limit(1)
+  )[0];
+  if (offen) {
+    return {
+      ok: false,
+      message: "Gremium hat noch offene Beschlüsse (Entwurf oder laufend) und kann nicht archiviert werden.",
+    };
   }
 
   await db
