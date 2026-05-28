@@ -56,7 +56,7 @@ export function BodyRow({ kv, body }: { kv: string; body: Body }) {
         ) : (
           <button
             type="button"
-            onClick={() => run(archiveBody, `"${body.name}" archivieren?`)}
+            onClick={() => run(archiveBody, `"${body.name}" archivieren? (nur möglich wenn alle Beschlüsse abgeschlossen)`)}
             disabled={pending}
             className="drk-btn-secondary"
             style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
