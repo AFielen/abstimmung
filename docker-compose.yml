@@ -93,6 +93,34 @@ services:
       start_period: 2m
       retries: 1
 
+  rundlauf-reminders:
+    container_name: rundlauf-reminders
+    build:
+      context: ./rundlauf-app
+    restart: unless-stopped
+    depends_on:
+      rundlauf-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+      MAILJET_API_KEY: ${MAILJET_API_KEY}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
+      APP_URL: ${RUNDLAUF_APP_URL:-https://rundlauf.drk-abstimmung.de}
+    entrypoint: ["/bin/sh", "-c"]
+    # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
+    command: ["while true; do npx --no-install tsx ./lib/cron/reminders.ts && touch /tmp/reminders.last-success; sleep 86400; done"]
+    networks:
+      - caddy-net
+    # Überschreibt den HTTP-Healthcheck aus dem Dockerfile (kein Webserver im Cron-Container).
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/reminders.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/reminders.last-success))) -lt 90000 ]"]
+      interval: 30m
+      timeout: 10s
+      start_period: 2m
+      retries: 1
+
   # Dev profile: expose ports for local development without Caddy
   abstimmung-dev:
     container_name: abstimmung-dev
