@@ -291,6 +291,13 @@ export const eligibleVoters = pgTable(
      * noch im Status "invited" war — der Versand erfolgt dann beim Beitritt.
      */
     inviteEmailSentAt: timestamp("invite_email_sent_at", { withTimezone: true }),
+    /**
+     * Zeitpunkt der Halbzeit-Erinnerung. NULL = noch nicht erinnert. Marker
+     * wird nur bei erfolgreichem Mailversand gesetzt (transiente Fehler werden
+     * am Folgetag erneut versucht). Kein Backfill: bereits laufende Verfahren
+     * über Halbzeit werden beim ersten Cron-Lauf einmalig erinnert.
+     */
+    reminderEmailSentAt: timestamp("reminder_email_sent_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("eligible_voters_resolution_user_idx").on(t.resolutionId, t.userId),

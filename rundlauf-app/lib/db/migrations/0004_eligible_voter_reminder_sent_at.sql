@@ -1,0 +1,1 @@
+ALTER TABLE "eligible_voters" ADD COLUMN "reminder_email_sent_at" timestamp with time zone;
