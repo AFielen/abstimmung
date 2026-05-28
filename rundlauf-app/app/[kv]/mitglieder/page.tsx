@@ -5,6 +5,7 @@ import { memberships, users } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/tenant";
 import { InviteForm } from "./invite-form";
 import { MemberRow } from "./member-row";
+import { ResendAllButton } from "./resend-all-button";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,10 @@ export default async function MembersPage({
     : [];
   const userMap = new Map(usersList.map((u) => [u.id, u]));
 
+  const pendingCount = all.filter(
+    (m) => m.status === "invited" && m.role !== "owner",
+  ).length;
+
   return (
     <div className="flex flex-col gap-6">
       <section className="drk-card">
@@ -45,9 +50,12 @@ export default async function MembersPage({
       </section>
 
       <section className="drk-card">
-        <h2 className="text-xl font-bold mb-4">
-          Mitglieder ({all.length})
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <h2 className="text-xl font-bold">
+            Mitglieder ({all.length})
+          </h2>
+          {pendingCount > 0 ? <ResendAllButton kv={kv} count={pendingCount} /> : null}
+        </div>
         <ul className="flex flex-col gap-2">
           {all.map((m) => {
             const u = userMap.get(m.userId);

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { changeRole, removeMember } from "./actions";
+import { changeRole, removeMember, resendInvite } from "./actions";
+
+type Feedback = { ok: boolean; message: string } | null;
 
 type Props = {
   kv: string;
@@ -27,7 +29,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function MemberRow({ kv, membershipId, email, name, role, status, canModify }: Props) {
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
   function handleRoleChange(newRole: string) {
     if (newRole === role) return;
@@ -37,7 +39,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
     fd.set("role", newRole);
     startTransition(async () => {
       const r = await changeRole(null, fd);
-      setError(r.ok ? null : r.message ?? "Fehler");
+      setFeedback(r.ok ? null : { ok: false, message: r.message ?? "Fehler" });
     });
   }
 
@@ -48,7 +50,17 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
     fd.set("membershipId", membershipId);
     startTransition(async () => {
       const r = await removeMember(null, fd);
-      setError(r.ok ? null : r.message ?? "Fehler");
+      setFeedback(r.ok ? null : { ok: false, message: r.message ?? "Fehler" });
+    });
+  }
+
+  function handleResend() {
+    const fd = new FormData();
+    fd.set("kv", kv);
+    fd.set("membershipId", membershipId);
+    startTransition(async () => {
+      const r = await resendInvite(null, fd);
+      setFeedback({ ok: r.ok, message: r.message ?? (r.ok ? "Versendet" : "Fehler") });
     });
   }
 
@@ -94,6 +106,18 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
           </span>
         )}
 
+        {canModify && status === "invited" ? (
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={pending}
+            className="drk-btn-secondary"
+            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
+          >
+            Einladung erneut senden
+          </button>
+        ) : null}
+
         {canModify ? (
           <button
             type="button"
@@ -107,12 +131,15 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
         ) : null}
       </div>
 
-      {error ? (
+      {feedback ? (
         <div
           className="w-full text-sm rounded p-2"
-          style={{ background: "var(--drk-bg)", color: "var(--drk)" }}
+          style={{
+            background: feedback.ok ? "var(--success-bg)" : "var(--drk-bg)",
+            color: feedback.ok ? "var(--success)" : "var(--drk)",
+          }}
         >
-          {error}
+          {feedback.message}
         </div>
       ) : null}
     </li>

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createMagicToken } from "@/lib/auth/magic";
 import { logAudit } from "@/lib/audit";
@@ -23,7 +23,7 @@ async function inviteUserToTenant(opts: {
   email: string; // already normalized (lower, trimmed)
   name?: string;
   role: "admin" | "member";
-  source: "form" | "import";
+  source: "form" | "import" | "resend";
 }): Promise<InviteOutcome> {
   const { ctx, email, name, role, source } = opts;
 
@@ -472,4 +472,125 @@ export async function confirmMemberImport(
 
   revalidatePath(`/${kv}/mitglieder`);
   return { ok: true, created, resent, alreadyActive, failed };
+}
+
+// ─── Resend invites ───────────────────────────────────────────────────────
+
+const resendSchema = z.object({
+  kv: z.string().min(1),
+  membershipId: z.string().uuid(),
+});
+
+export async function resendInvite(
+  _prev: InviteState | null,
+  formData: FormData,
+): Promise<InviteState> {
+  const parsed = resendSchema.safeParse({
+    kv: formData.get("kv"),
+    membershipId: formData.get("membershipId"),
+  });
+  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+
+  const ctx = await requireAdmin(parsed.data.kv);
+
+  const m = (
+    await db
+      .select()
+      .from(memberships)
+      .where(eq(memberships.id, parsed.data.membershipId))
+      .limit(1)
+  )[0];
+  if (!m || m.tenantId !== ctx.tenant.id) {
+    return { ok: false, message: "Mitglied nicht gefunden" };
+  }
+  if (m.role === "owner") {
+    return { ok: false, message: "Owner-Einladung kann nicht erneut versendet werden" };
+  }
+  if (m.status !== "invited") {
+    return { ok: false, message: "Nur ausstehende Einladungen können erneut versendet werden" };
+  }
+
+  const u = (
+    await db.select().from(users).where(eq(users.id, m.userId)).limit(1)
+  )[0];
+  if (!u) return { ok: false, message: "Benutzer nicht gefunden" };
+
+  await inviteUserToTenant({
+    ctx,
+    email: u.email.toLowerCase(),
+    name: u.name ?? undefined,
+    role: m.role,
+    source: "resend",
+  });
+
+  revalidatePath(`/${parsed.data.kv}/mitglieder`);
+  return { ok: true, message: `Einladung an ${u.email} erneut versendet` };
+}
+
+export async function resendAllPendingInvites(
+  _prev: InviteState | null,
+  formData: FormData,
+): Promise<InviteState> {
+  const kv = formData.get("kv");
+  if (typeof kv !== "string" || kv.length === 0) {
+    return { ok: false, message: "Ungültige Eingabe" };
+  }
+  const ctx = await requireAdmin(kv);
+
+  const pending = await db
+    .select({ email: users.email, name: users.name, role: memberships.role })
+    .from(memberships)
+    .innerJoin(users, eq(memberships.userId, users.id))
+    .where(
+      and(
+        eq(memberships.tenantId, ctx.tenant.id),
+        eq(memberships.status, "invited"),
+        ne(memberships.role, "owner"),
+      ),
+    );
+
+  if (pending.length === 0) {
+    return { ok: false, message: "Keine ausstehenden Einladungen" };
+  }
+  if (pending.length > MAX_IMPORT_ROWS) {
+    return {
+      ok: false,
+      message: `Zu viele ausstehende Einladungen (${pending.length}). Bitte einzeln erneut senden.`,
+    };
+  }
+
+  let sent = 0;
+  const failed: string[] = [];
+  for (const p of pending) {
+    try {
+      await inviteUserToTenant({
+        ctx,
+        email: p.email.toLowerCase(),
+        name: p.name ?? undefined,
+        role: p.role === "admin" ? "admin" : "member",
+        source: "resend",
+      });
+      sent++;
+    } catch (err) {
+      console.error("[resend-all] invite failed", p.email, err);
+      failed.push(p.email);
+    }
+  }
+
+  await logAudit({
+    action: "membership.resend_all",
+    tenantId: ctx.tenant.id,
+    actorUserId: ctx.user.id,
+    payload: { requested: pending.length, sent, failed: failed.length },
+  });
+
+  revalidatePath(`/${kv}/mitglieder`);
+
+  return {
+    ok: true,
+    message:
+      failed.length === 0
+        ? `${sent} Einladung${sent === 1 ? "" : "en"} erneut versendet`
+        : `${sent} versendet, ${failed.length} fehlgeschlagen`,
+  };
 }
