@@ -174,3 +174,74 @@ export async function sendResolutionInvite(opts: {
     html,
   });
 }
+
+export async function sendVoteReminder(opts: {
+  to: { email: string; name?: string };
+  tenantName: string;
+  resolutionTitle: string;
+  resolutionLink: string;
+  fristEnde: Date;
+}) {
+  const fristStr = opts.fristEnde.toLocaleString("de-DE", {
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+  const greeting = opts.to.name ? ` ${opts.to.name}` : "";
+  const text = `Hallo${greeting},\n\nim Kreisverband "${opts.tenantName}" läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:\n\n"${opts.resolutionTitle}"\n\nFrist: ${fristStr}\n\nJetzt abstimmen:\n${opts.resolutionLink}`;
+  const greetingHtml = opts.to.name
+    ? `Hallo <strong>${opts.to.name}</strong>,`
+    : "Hallo,";
+  const html = HTML_WRAPPER(
+    "Erinnerung: bitte noch abstimmen",
+    `<p>${greetingHtml}</p>
+     <p>im Kreisverband <strong>${opts.tenantName}</strong> läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:</p>
+     <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
+       <strong>${opts.resolutionTitle}</strong><br/>
+       Frist: ${fristStr}
+     </p>
+     <p style="margin: 24px 0;"><a href="${opts.resolutionLink}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Jetzt abstimmen</a></p>
+     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${opts.resolutionLink}</p>`,
+  );
+  await sendMail({
+    to: opts.to,
+    subject: `Erinnerung: ${opts.resolutionTitle}`,
+    text,
+    html,
+  });
+}
+
+export async function sendInviteReminder(opts: {
+  to: { email: string; name?: string };
+  tenantName: string;
+  rawToken: string;
+}) {
+  const link = `${appUrl()}/auth/magic/${opts.rawToken}`;
+  const greeting = opts.to.name ? ` ${opts.to.name}` : "";
+  const text = [
+    `Hallo${greeting},`,
+    "",
+    `im Kreisverband "${opts.tenantName}" wartet eine Abstimmung auf dich – deine Einladung ist noch offen.`,
+    "",
+    "Nimm die Einladung an, um teilzunehmen. Nach dem Klick bist du direkt angemeldet – ein Passwort wird nicht benötigt:",
+    link,
+    "",
+    "Der Link ist 7 Tage gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.",
+  ].join("\n");
+  const greetingHtml = opts.to.name
+    ? `Hallo <strong>${opts.to.name}</strong>,`
+    : "Hallo,";
+  const html = HTML_WRAPPER(
+    `Erinnerung: Einladung zu ${opts.tenantName} noch offen`,
+    `<p>${greetingHtml}</p>
+     <p>im Kreisverband <strong>${opts.tenantName}</strong> wartet eine Abstimmung auf dich – deine Einladung ist noch offen.</p>
+     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Einladung annehmen</a></p>
+     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">Oder kopiere diesen Link in deinen Browser:<br>${link}</p>
+     <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist <strong>7 Tage</strong> gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.</p>`,
+  );
+  await sendMail({
+    to: opts.to,
+    subject: `Erinnerung: Einladung zu ${opts.tenantName}`,
+    text,
+    html,
+  });
+}
