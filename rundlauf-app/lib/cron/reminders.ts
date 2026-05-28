@@ -12,10 +12,10 @@
  */
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { createMagicToken } from "@/lib/auth/magic";
-import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import {
   agendaItems,
+  auditLog,
   eligibleVoters,
   memberships,
   resolutions,
@@ -37,8 +37,14 @@ type PendingInvite = {
 };
 
 async function main() {
+  if (!process.env.APP_URL) {
+    throw new Error("APP_URL muss gesetzt sein");
+  }
+  if (!process.env.MAILJET_API_KEY || !process.env.MAILJET_API_SECRET) {
+    throw new Error("MAILJET_API_KEY und MAILJET_API_SECRET müssen gesetzt sein");
+  }
   const now = new Date();
-  const baseUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
+  const baseUrl = process.env.APP_URL.replace(/\/$/, "");
 
   const running = await db
     .select({
@@ -158,7 +164,7 @@ async function main() {
           .update(eligibleVoters)
           .set({ reminderEmailSentAt: new Date() })
           .where(eq(eligibleVoters.id, c.evId));
-        await logAudit({
+        await db.insert(auditLog).values({
           action: "resolution.vote_reminder_sent",
           tenantId: r.tenantId,
           actorUserId: c.userId,
@@ -192,7 +198,7 @@ async function main() {
         .update(eligibleVoters)
         .set({ reminderEmailSentAt: new Date() })
         .where(inArray(eligibleVoters.id, info.evIds));
-      await logAudit({
+      await db.insert(auditLog).values({
         action: "resolution.invite_reminder_sent",
         tenantId: info.tenantId,
         actorUserId: info.userId,
