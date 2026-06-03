@@ -369,7 +369,7 @@ export default async function ResolutionPage({
       {ctx.isAdmin && r.status === "laufend" ? (
         <section className="drk-card">
           <h2 className="text-lg font-bold mb-3">Administration</h2>
-          <AdminActions kv={kv} resolutionId={r.id} />
+          <AdminActions kv={kv} resolutionId={r.id} pastDeadline={past} />
         </section>
       ) : null}
     </div>

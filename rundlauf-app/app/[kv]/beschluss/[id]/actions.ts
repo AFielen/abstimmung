@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
@@ -13,11 +13,8 @@ import {
   resolutions,
   votes,
 } from "@/lib/db/schema";
-import {
-  computeAgendaItemResult,
-  isPastDeadline,
-  parseOptions,
-} from "@/lib/resolution";
+import { finalizeResolution } from "@/lib/finalize";
+import { isPastDeadline, parseOptions } from "@/lib/resolution";
 import { requireAdmin, requireTenantContext } from "@/lib/tenant";
 
 const voteSchema = z.object({
@@ -227,66 +224,3 @@ export async function withdrawResolution(
   return { ok: true, message: "Beschluss zurückgezogen" };
 }
 
-/**
- * Berechnet Ergebnisse pro TOP, schreibt sie in agenda_items.ergebnis und
- * setzt resolutions.status = abgeschlossen.
- */
-export async function finalizeResolution(resolutionId: string) {
-  const r = (
-    await db.select().from(resolutions).where(eq(resolutions.id, resolutionId)).limit(1)
-  )[0];
-  if (!r) return;
-
-  const eligible = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(eligibleVoters)
-    .where(eq(eligibleVoters.resolutionId, r.id));
-  const eligibleCount = eligible[0]?.count ?? 0;
-
-  const tops = await db
-    .select()
-    .from(agendaItems)
-    .where(eq(agendaItems.resolutionId, r.id));
-  if (tops.length === 0) {
-    await db
-      .update(resolutions)
-      .set({ status: "abgeschlossen", abgeschlossenAm: new Date() })
-      .where(eq(resolutions.id, r.id));
-    return;
-  }
-
-  const topIds = tops.map((t) => t.id);
-  const rows = await db
-    .select({
-      agendaItemId: votes.agendaItemId,
-      optionId: votes.optionId,
-      c: sql<number>`count(*)::int`,
-    })
-    .from(votes)
-    .where(inArray(votes.agendaItemId, topIds))
-    .groupBy(votes.agendaItemId, votes.optionId);
-
-  const byTop = new Map<string, Record<string, number>>();
-  for (const row of rows) {
-    if (!byTop.has(row.agendaItemId)) byTop.set(row.agendaItemId, {});
-    byTop.get(row.agendaItemId)![row.optionId] = row.c;
-  }
-
-  for (const top of tops) {
-    const counts = byTop.get(top.id) ?? {};
-    const result = computeAgendaItemResult({
-      agendaItem: top,
-      eligibleCount,
-      voteCounts: counts,
-    });
-    await db
-      .update(agendaItems)
-      .set({ ergebnis: result })
-      .where(eq(agendaItems.id, top.id));
-  }
-
-  await db
-    .update(resolutions)
-    .set({ status: "abgeschlossen", abgeschlossenAm: new Date() })
-    .where(eq(resolutions.id, r.id));
-}
