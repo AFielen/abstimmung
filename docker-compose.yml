@@ -122,6 +122,29 @@ services:
       start_period: 2m
       retries: 1
 
+  rundlauf-auto-close:
+    container_name: rundlauf-auto-close
+    build:
+      context: ./rundlauf-app
+    restart: unless-stopped
+    depends_on:
+      rundlauf-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+    entrypoint: ["/bin/sh", "-c"]
+    # Stündlich: Beschlüsse mit abgelaufener Frist finalisieren.
+    # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 1.5h.
+    command: ["while true; do npx --no-install tsx ./lib/cron/auto-close.ts && touch /tmp/auto-close.last-success; sleep 3600; done"]
+    networks:
+      - rundlauf-int
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/auto-close.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/auto-close.last-success))) -lt 5400 ]"]
+      interval: 30m
+      timeout: 10s
+      start_period: 2m
+      retries: 1
+
   # Dev profile: expose ports for local development without Caddy
   abstimmung-dev:
     container_name: abstimmung-dev
