@@ -114,6 +114,41 @@ export function isPastDeadline(fristEnde: Date): boolean {
   return new Date(fristEnde).getTime() <= Date.now();
 }
 
+export type InviteSendOutcome = {
+  /** userIds, deren Einladungsmail erfolgreich versandt wurde. */
+  sentUserIds: string[];
+  /** Fehlgeschlagene Versände (für Audit-Log). */
+  failed: Array<{ email: string; reason: string }>;
+};
+
+/**
+ * Wertet die Ergebnisse eines `Promise.allSettled`-Mailversands aus. `results`
+ * ist positionsgleich zu `recipients`. Erfolgreiche Empfänger landen in
+ * `sentUserIds` (für den Versandmarker), fehlgeschlagene in `failed`.
+ */
+export function partitionInviteResults(
+  recipients: Array<{ userId: string; email: string }>,
+  results: PromiseSettledResult<unknown>[],
+): InviteSendOutcome {
+  const sentUserIds: string[] = [];
+  const failed: Array<{ email: string; reason: string }> = [];
+  recipients.forEach((m, i) => {
+    const res = results[i];
+    if (res && res.status === "fulfilled") {
+      sentUserIds.push(m.userId);
+    } else {
+      const reason =
+        res && res.status === "rejected"
+          ? res.reason instanceof Error
+            ? res.reason.message
+            : String(res.reason)
+          : "unbekannt";
+      failed.push({ email: m.email, reason });
+    }
+  });
+  return { sentUserIds, failed };
+}
+
 export const MIN_FRIST_DAYS = 14;
 
 /** Limits für PDF-Anlagen pro Umlauf. */

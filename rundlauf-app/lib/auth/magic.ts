@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { magicTokens } from "@/lib/db/schema";
 
@@ -44,21 +44,22 @@ export async function consumeMagicToken(raw: string) {
   const tokenHash = hashToken(raw);
   const now = new Date();
 
-  const found = await db
-    .select()
-    .from(magicTokens)
-    .where(and(eq(magicTokens.tokenHash, tokenHash), isNull(magicTokens.consumedAt)))
-    .limit(1);
-
-  const token = found[0];
-  if (!token) return null;
-  if (token.expiresAt.getTime() < now.getTime()) return null;
-
-  await db
+  // Atomar verbrauchen: das Token wird nur konsumiert, wenn es noch nicht
+  // eingelöst und nicht abgelaufen ist. Ein bedingtes UPDATE ... RETURNING
+  // schließt die Race Condition, die ein getrenntes SELECT + UPDATE offen ließe
+  // (zwei parallele Einlösungen desselben Tokens).
+  const consumed = await db
     .update(magicTokens)
     .set({ consumedAt: now })
-    .where(eq(magicTokens.id, token.id));
+    .where(
+      and(
+        eq(magicTokens.tokenHash, tokenHash),
+        isNull(magicTokens.consumedAt),
+        gt(magicTokens.expiresAt, now),
+      ),
+    )
+    .returning();
 
-  return token;
+  return consumed[0] ?? null;
 }
 

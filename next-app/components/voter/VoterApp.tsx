@@ -28,6 +28,11 @@ interface VoterAppProps {
   transportMode: TransportMode;
 }
 
+// Upper bound for the initial connection. The P2P transport's init() has no
+// internal timeout (only reconnect attempts do), so without this guard a voter
+// whose first connect never opens would stay on the connecting screen forever.
+const INITIAL_CONNECT_TIMEOUT_MS = 15000;
+
 export default function VoterApp({ presenterPeerId, transportMode }: VoterAppProps) {
   const [state, dispatch] = useReducer(voterReducer, initialVoterState);
 
@@ -49,6 +54,11 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   // Track the current round ID in a ref for use inside callbacks
   const currentRoundIdRef = useRef<string | null>(null);
   currentRoundIdRef.current = state.currentRoundId;
+
+  // Whether the transport has ever connected; used to guard the initial
+  // connection timeout so a slow-but-eventually-successful connect is not
+  // treated as a failure.
+  const hasConnectedRef = useRef(false);
 
   // Ref for the active transport so callbacks can reference it
   const transportRef = useRef<{ send: (msg: any) => void; markSessionEnded: () => void }>(null!);
@@ -193,6 +203,7 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   );
 
   const handleConnected = useCallback(() => {
+    hasConnectedRef.current = true;
     dispatchRef.current({ type: 'CONNECTED' });
     // Register with the presenter
     transportRef.current.send({
@@ -258,9 +269,26 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
 
     // Initialize the active transport and connect to presenter
     const activeTransport = transportMode === 'server' ? serverTransport : p2pTransport;
-    activeTransport.init(presenterPeerId);
+    hasConnectedRef.current = false;
+
+    // Initial-Timeout: if the very first connection never opens (init() can hang
+    // indefinitely on the P2P transport, or reject on the server transport),
+    // hand off to the reconnect machinery so the UI ends up in reconnecting →
+    // error instead of being stuck on the connecting screen forever.
+    const initTimeout = setTimeout(() => {
+      if (!hasConnectedRef.current) {
+        activeTransport.retryConnect();
+      }
+    }, INITIAL_CONNECT_TIMEOUT_MS);
+
+    activeTransport.init(presenterPeerId).catch(() => {
+      if (!hasConnectedRef.current) {
+        activeTransport.retryConnect();
+      }
+    });
 
     return () => {
+      clearTimeout(initTimeout);
       stopTimer();
     };
   }, [presenterPeerId, transportMode]); // eslint-disable-line react-hooks/exhaustive-deps

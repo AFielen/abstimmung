@@ -1,12 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketRelay = void 0;
+exports.parseMaxConnectionsPerIp = parseMaxConnectionsPerIp;
+exports.validateDataPayload = validateDataPayload;
 const ws_1 = require("ws");
 const ROOM_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 const MAX_ROOMS = 100;
 const MAX_VOTERS_PER_ROOM = 300;
-const MAX_CONNECTIONS_PER_IP = 10;
+// Per-IP connection cap. Assemblies frequently place many devices behind a
+// single NAT/router (venue WiFi), so a low cap would lock out legitimate
+// voters. The default is generous while still bounding abuse; override via
+// the WS_MAX_CONNECTIONS_PER_IP env var.
+const DEFAULT_MAX_CONNECTIONS_PER_IP = 200;
+function parseMaxConnectionsPerIp(raw) {
+    const n = Number(raw);
+    if (Number.isInteger(n) && n > 0)
+        return n;
+    return DEFAULT_MAX_CONNECTIONS_PER_IP;
+}
+const MAX_CONNECTIONS_PER_IP = parseMaxConnectionsPerIp(process.env.WS_MAX_CONNECTIONS_PER_IP);
 // Rate-limit per WS connection (sliding 1-second window).
 const MAX_MESSAGES_PER_SECOND = 20;
 // Bounds for the application payload inside `host-msg` / `host-msg-to` / `voter-msg`.

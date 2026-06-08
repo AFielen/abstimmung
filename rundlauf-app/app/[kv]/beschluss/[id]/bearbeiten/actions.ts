@@ -15,7 +15,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import { sendResolutionInvite } from "@/lib/mail/templates";
-import { DEFAULT_OPTIONS, MIN_FRIST_DAYS } from "@/lib/resolution";
+import { DEFAULT_OPTIONS, MIN_FRIST_DAYS, partitionInviteResults } from "@/lib/resolution";
 import { requireAdmin } from "@/lib/tenant";
 
 export type ActionState = { ok: boolean; message?: string };
@@ -421,29 +421,30 @@ export async function publishResolution(
     };
   }
 
-  // Eligible-Voter Snapshots schreiben. Aktive Mitglieder bekommen die Mail
-  // unten sofort → inviteEmailSentAt = jetzt. Eingeladene bekommen sie beim
-  // Beitritt → inviteEmailSentAt bleibt NULL.
+  // Eligible-Voter Snapshots schreiben und Status atomar umschalten, damit die
+  // Veröffentlichung DB-seitig konsistent ist (entweder beides oder nichts).
+  // inviteEmailSentAt bleibt zunächst für alle NULL und wird erst nach
+  // erfolgreichem Versand gesetzt (siehe unten).
   const publishedAt = new Date();
-  await db.insert(eligibleVoters).values(
-    validMembers.map((m) => ({
-      resolutionId: r!.id,
-      userId: m.userId,
-      nameSnapshot: m.name ?? m.email,
-      emailSnapshot: m.email,
-      roleSnapshot: m.role,
-      inviteEmailSentAt: m.status === "active" ? publishedAt : null,
-    })),
-  );
-
   const activeMembers = validMembers.filter((m) => m.status === "active");
   const pendingInviteCount = validMembers.length - activeMembers.length;
 
-  // Status auf laufend
-  await db
-    .update(resolutions)
-    .set({ status: "laufend", startedAt: publishedAt })
-    .where(eq(resolutions.id, r!.id));
+  await db.transaction(async (tx) => {
+    await tx.insert(eligibleVoters).values(
+      validMembers.map((m) => ({
+        resolutionId: r!.id,
+        userId: m.userId,
+        nameSnapshot: m.name ?? m.email,
+        emailSnapshot: m.email,
+        roleSnapshot: m.role,
+        inviteEmailSentAt: null,
+      })),
+    );
+    await tx
+      .update(resolutions)
+      .set({ status: "laufend", startedAt: publishedAt })
+      .where(eq(resolutions.id, r!.id));
+  });
 
   await logAudit({
     action: "resolution.published",
@@ -465,7 +466,7 @@ export async function publishResolution(
   const link = `${process.env.APP_URL?.replace(/\/$/, "")}/${ctx.tenant.slug}/beschluss/${r!.id}`;
   const subjectTitle =
     r!.betreff || `Umlaufverfahren mit ${topCount} Beschlussvorlage${topCount === 1 ? "" : "n"}`;
-  await Promise.allSettled(
+  const sendResults = await Promise.allSettled(
     activeMembers.map((m) =>
       sendResolutionInvite({
         to: { email: m.email, name: m.name ?? undefined },
@@ -477,6 +478,34 @@ export async function publishResolution(
       }),
     ),
   );
+
+  // Versandmarker nur für tatsächlich versandte Mails setzen. Aktive Mitglieder
+  // ohne erfolgreichen Versand behalten inviteEmailSentAt = NULL und werden vom
+  // Reminder-Job als Sicherheitsnetz erneut benachrichtigt.
+  const { sentUserIds, failed } = partitionInviteResults(activeMembers, sendResults);
+  if (sentUserIds.length > 0) {
+    await db
+      .update(eligibleVoters)
+      .set({ inviteEmailSentAt: publishedAt })
+      .where(
+        and(
+          eq(eligibleVoters.resolutionId, r!.id),
+          inArray(eligibleVoters.userId, sentUserIds),
+        ),
+      );
+  }
+
+  // Fehlgeschlagene Versände auditierbar machen.
+  if (failed.length > 0) {
+    await logAudit({
+      action: "resolution.invite_failed",
+      tenantId: ctx.tenant.id,
+      actorUserId: ctx.user.id,
+      targetType: "resolution",
+      targetId: r!.id,
+      payload: { failedCount: failed.length, failed },
+    });
+  }
 
   revalidatePath(`/${parsed.data.kv}`);
   redirect(`/${parsed.data.kv}/beschluss/${r!.id}`);
