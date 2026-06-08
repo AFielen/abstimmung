@@ -37,7 +37,20 @@ const CLEANUP_INTERVAL_MS = 60 * 1000;
 
 const MAX_ROOMS = 100;
 const MAX_VOTERS_PER_ROOM = 300;
-const MAX_CONNECTIONS_PER_IP = 10;
+
+// Per-IP connection cap. Assemblies frequently place many devices behind a
+// single NAT/router (venue WiFi), so a low cap would lock out legitimate
+// voters. The default is generous while still bounding abuse; override via
+// the WS_MAX_CONNECTIONS_PER_IP env var.
+const DEFAULT_MAX_CONNECTIONS_PER_IP = 200;
+
+export function parseMaxConnectionsPerIp(raw: string | undefined): number {
+  const n = Number(raw);
+  if (Number.isInteger(n) && n > 0) return n;
+  return DEFAULT_MAX_CONNECTIONS_PER_IP;
+}
+
+const MAX_CONNECTIONS_PER_IP = parseMaxConnectionsPerIp(process.env.WS_MAX_CONNECTIONS_PER_IP);
 
 // Rate-limit per WS connection (sliding 1-second window).
 const MAX_MESSAGES_PER_SECOND = 20;
@@ -48,7 +61,7 @@ const MAX_DATA_STRING_LENGTH = 1024;
 const MAX_DATA_KEYS = 32;
 const MAX_DATA_DEPTH = 4;
 
-function validateDataPayload(data: unknown, depth = 0): boolean {
+export function validateDataPayload(data: unknown, depth = 0): boolean {
   if (depth > MAX_DATA_DEPTH) return false;
   if (data === null) return true;
   const t = typeof data;

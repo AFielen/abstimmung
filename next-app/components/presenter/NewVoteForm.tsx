@@ -3,6 +3,14 @@
 import { useState } from 'react';
 import type { VoteType } from '@/lib/types';
 
+// Client-side limits kept within the relay's per-string cap (1024 chars) so a
+// vote is never silently dropped by the WebSocket relay's payload validation.
+const MAX_TOPIC_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 1000;
+const MAX_OPTION_LENGTH = 200;
+// Relay caps arrays at 32 entries; stay safely below.
+const MAX_OPTION_COUNT = 30;
+
 interface NewVoteFormProps {
   onStartVote: (
     topic: string,
@@ -24,7 +32,9 @@ export default function NewVoteForm({ onStartVote }: NewVoteFormProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!topic.trim()) return;
+    const trimmedTopic = topic.trim();
+    if (!trimmedTopic || trimmedTopic.length > MAX_TOPIC_LENGTH) return;
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return;
 
     let options: string[];
     if (voteType === 'yes-no') {
@@ -34,9 +44,9 @@ export default function NewVoteForm({ onStartVote }: NewVoteFormProps) {
         .split('\n')
         .map((o) => o.trim())
         .filter((o) => o.length > 0);
-      if (options.length < 2) return;
-      // Validate: max 200 chars per option, no HTML tags
-      if (options.some(o => o.length > 200 || /<[^>]*>/g.test(o))) return;
+      if (options.length < 2 || options.length > MAX_OPTION_COUNT) return;
+      // Validate: max length per option, no HTML tags
+      if (options.some(o => o.length > MAX_OPTION_LENGTH || /<[^>]*>/g.test(o))) return;
     }
 
     onStartVote(
@@ -81,6 +91,7 @@ export default function NewVoteForm({ onStartVote }: NewVoteFormProps) {
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
+            maxLength={MAX_TOPIC_LENGTH}
             placeholder="z.B. Genehmigung des Jahresberichts"
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-colors"
             style={{
@@ -99,6 +110,7 @@ export default function NewVoteForm({ onStartVote }: NewVoteFormProps) {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            maxLength={MAX_DESCRIPTION_LENGTH}
             rows={2}
             placeholder="Zusaetzliche Informationen zur Abstimmung..."
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-colors resize-y"

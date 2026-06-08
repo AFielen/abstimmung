@@ -344,7 +344,10 @@ export default function PresenterApp() {
     if (!s.currentVote) return;
 
     const cv = s.currentVote;
-    const notVoted = s.voterCount - cv.totalCast;
+    // Clamp to 0: totalCast can briefly exceed voterCount (e.g. a voter casts a
+    // vote, then disconnects and lowers voterCount), which must not surface as a
+    // negative "nicht abgestimmt" count.
+    const notVoted = Math.max(0, s.voterCount - cv.totalCast);
 
     // Determine outcome
     let outcome: VoteOutcome;
