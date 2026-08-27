@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { VoteData, SessionMode, TransportMode } from '@/lib/types';
-import { barCls, formatTimerTime } from '@/lib/utils';
+import { BAR_COLORS, CUSTOM_COLORS, formatTimerTime, voteOptionCls } from '@/lib/utils';
 import QRCode from 'qrcode';
 
 interface ActiveVoteProps {
@@ -17,18 +17,6 @@ interface ActiveVoteProps {
   onCloseVote: () => void;
   onCancelVote: () => void;
 }
-
-const BAR_COLORS: Record<string, string> = {
-  ja: '#2e7d32',
-  nein: '#c62828',
-  enthaltung: '#f9a825',
-  custom: '#1565c0',
-};
-
-const CUSTOM_COLORS = [
-  '#1565c0', '#2e7d32', '#c62828', '#f9a825',
-  '#6a1b9a', '#00838f', '#e65100', '#4e342e',
-];
 
 export default function ActiveVote({
   vote,
@@ -173,7 +161,7 @@ export default function ActiveVote({
           {vote.options.map((opt, idx) => {
             const count = vote.votes[opt] || 0;
             const pct = vote.totalCast > 0 ? (count / vote.totalCast) * 100 : 0;
-            const cls = barCls(opt, vote.type);
+            const cls = voteOptionCls(opt, vote.type);
             const color =
               vote.type === 'custom'
                 ? CUSTOM_COLORS[idx % CUSTOM_COLORS.length]

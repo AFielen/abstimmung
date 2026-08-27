@@ -1,37 +1,26 @@
 'use client';
 
 import type { VoteResult } from '@/lib/types';
-import { barCls } from '@/lib/utils';
+import { BAR_COLORS, CUSTOM_COLORS, OUTCOME_BADGE_COLORS, voteOptionCls } from '@/lib/utils';
 
 interface VoteResultDisplayProps {
   result: VoteResult;
   onNextVote: () => void;
 }
 
-const BAR_COLORS: Record<string, string> = {
-  ja: '#2e7d32',
-  nein: '#c62828',
-  enthaltung: '#f9a825',
-  custom: '#1565c0',
-};
-
-const CUSTOM_COLORS = [
-  '#1565c0', '#2e7d32', '#c62828', '#f9a825',
-  '#6a1b9a', '#00838f', '#e65100', '#4e342e',
-];
-
 function outcomeLabel(result: VoteResult): { text: string; color: string; bg: string } {
+  const colors = OUTCOME_BADGE_COLORS[result.outcome] ?? OUTCOME_BADGE_COLORS.default;
   switch (result.outcome) {
     case 'accepted':
-      return { text: 'ANGENOMMEN', color: '#2e7d32', bg: '#e8f5e9' };
+      return { text: 'ANGENOMMEN', ...colors };
     case 'rejected':
-      return { text: 'ABGELEHNT', color: '#c62828', bg: '#ffebee' };
+      return { text: 'ABGELEHNT', ...colors };
     case 'tie':
-      return { text: 'STIMMENGLEICHHEIT', color: '#f57f17', bg: '#fff8e1' };
+      return { text: 'STIMMENGLEICHHEIT', ...colors };
     case 'custom-winner':
-      return { text: `Gewinner: ${result.winner || ''}`, color: '#2e7d32', bg: '#e8f5e9' };
+      return { text: `Gewinner: ${result.winner || ''}`, ...colors };
     default:
-      return { text: '', color: 'var(--text)', bg: '#f5f5f5' };
+      return { text: '', ...colors };
   }
 }
 
@@ -64,7 +53,7 @@ export default function VoteResultDisplay({ result, onNextVote }: VoteResultDisp
         {result.options.map((opt, idx) => {
           const count = result.votes[opt] || 0;
           const pct = result.totalCast > 0 ? (count / result.totalCast) * 100 : 0;
-          const cls = barCls(opt, result.type);
+          const cls = voteOptionCls(opt, result.type);
           const color =
             result.type === 'custom'
               ? CUSTOM_COLORS[idx % CUSTOM_COLORS.length]

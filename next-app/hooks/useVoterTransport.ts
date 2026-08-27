@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useCallback, useEffect, useMemo } from 'react';
 import type { DataConnection } from 'peerjs';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getSignalConfig } from '@/lib/signal-config';
 
 interface VoterTransportCallbacks {
@@ -66,7 +66,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
 
   const setupDataHandler = useCallback((c: DataConnection) => {
     c.on('data', (rawData: unknown) => {
-      if (typeof rawData !== 'object' || !rawData || !('type' in rawData)) return;
+      if (!hasMessageType(rawData)) return;
       const data = rawData as HostMessage;
       // Filter out heartbeat pong responses
       if (data.type === 'pong') return;

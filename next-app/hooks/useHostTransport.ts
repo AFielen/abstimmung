@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import type { DataConnection } from 'peerjs';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getSignalConfig } from '@/lib/signal-config';
 
 interface HostTransportCallbacks {
@@ -43,7 +43,7 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     });
 
     conn.on('data', (rawData: unknown) => {
-      if (typeof rawData !== 'object' || !rawData || !('type' in rawData)) return;
+      if (!hasMessageType(rawData)) return;
       const data = rawData as VoterMessage;
 
       // Heartbeat: respond to ping immediately

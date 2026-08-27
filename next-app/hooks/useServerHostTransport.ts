@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getWsRelayUrl } from '@/lib/signal-config';
 
 interface ServerHostTransportCallbacks {
@@ -112,7 +112,7 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
             break;
 
           case 'voter-data': {
-            if (typeof msg.data !== 'object' || !msg.data || !('type' in msg.data)) break;
+            if (!hasMessageType(msg.data)) break;
             const voterMsg = msg.data as VoterMessage;
 
             // Handle ping internally

@@ -1,11 +1,10 @@
 'use client';
 import { useState, useCallback } from 'react';
-import { formatTimerTime, voteBtnCls } from '@/lib/utils';
+import { formatTimerTime, voteOptionCls } from '@/lib/utils';
+import { TOKEN_CHARS } from '@/lib/token';
 import type { VoteResult, VoteType } from '@/lib/types';
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────
-
-const TOKEN_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 function timerClasses(seconds: number): string {
   const base = 'text-2xl font-bold tabular-nums';
@@ -17,7 +16,7 @@ function timerClasses(seconds: number): string {
 
 function voteButtonStyle(opt: string, type: VoteType): string {
   const base = 'w-full py-4 px-4 text-lg font-bold rounded-[10px] text-white active:scale-95 transition-transform';
-  const cls = voteBtnCls(opt, type);
+  const cls = voteOptionCls(opt, type);
   if (cls === 'ja') return base + ' bg-[var(--success)]';
   if (cls === 'nein') return base + ' bg-[var(--danger)]';
   if (cls === 'enthaltung') return base + ' bg-[var(--warning)] text-[var(--text)]';

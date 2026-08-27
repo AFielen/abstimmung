@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { VoteResult, SessionMode } from '@/lib/types';
 import { generatePdf } from '@/lib/pdf-export';
+import { OUTCOME_BADGE_COLORS } from '@/lib/utils';
 
 interface VoteHistoryProps {
   history: VoteResult[];
@@ -12,17 +13,18 @@ interface VoteHistoryProps {
 }
 
 function outcomeBadge(result: VoteResult): { text: string; color: string; bg: string } {
+  const colors = OUTCOME_BADGE_COLORS[result.outcome] ?? OUTCOME_BADGE_COLORS.default;
   switch (result.outcome) {
     case 'accepted':
-      return { text: 'Angenommen', color: '#2e7d32', bg: '#e8f5e9' };
+      return { text: 'Angenommen', ...colors };
     case 'rejected':
-      return { text: 'Abgelehnt', color: '#c62828', bg: '#ffebee' };
+      return { text: 'Abgelehnt', ...colors };
     case 'tie':
-      return { text: 'Gleichstand', color: '#f57f17', bg: '#fff8e1' };
+      return { text: 'Gleichstand', ...colors };
     case 'custom-winner':
-      return { text: result.winner || 'Gewinner', color: '#2e7d32', bg: '#e8f5e9' };
+      return { text: result.winner || 'Gewinner', ...colors };
     default:
-      return { text: '', color: 'var(--text)', bg: '#f5f5f5' };
+      return { text: '', ...colors };
   }
 }
 

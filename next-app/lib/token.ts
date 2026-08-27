@@ -1,4 +1,4 @@
-const TOKEN_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const TOKEN_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 export function generateToken(): string {
   let code = "";
