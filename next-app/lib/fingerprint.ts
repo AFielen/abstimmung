@@ -115,23 +115,34 @@ function generateDeviceFingerprintInternal(): Promise<string> {
         "Segoe UI",
         "Roboto",
       ];
-      const span = document.createElement("span");
-      span.style.cssText =
-        "position:absolute;left:-9999px;font-size:72px;visibility:hidden";
-      span.textContent = "mmmmmmmmmmlli";
-      document.body.appendChild(span);
-      span.style.fontFamily = "monospace";
-      const baseW = span.offsetWidth;
-      const baseH = span.offsetHeight;
-      let fontBits = "";
-      testFonts.forEach(function (f) {
-        span.style.fontFamily = '"' + f + '", monospace';
-        fontBits +=
-          span.offsetWidth !== baseW || span.offsetHeight !== baseH
-            ? "1"
-            : "0";
+      // One span per font, all appended before any measurement: batching the
+      // DOM writes ahead of the reads costs a single forced layout instead of
+      // one per font. Styles and text match the previous per-font loop, so the
+      // measured values (and thus the fingerprint) stay identical.
+      const makeSpan = (family: string) => {
+        const s = document.createElement("span");
+        s.style.cssText =
+          "position:absolute;left:-9999px;font-size:72px;visibility:hidden";
+        s.style.fontFamily = family;
+        s.textContent = "mmmmmmmmmmlli";
+        document.body.appendChild(s);
+        return s;
+      };
+      const baseSpan = makeSpan("monospace");
+      const fontSpans = testFonts.map(function (f) {
+        return makeSpan('"' + f + '", monospace');
       });
-      document.body.removeChild(span);
+      const baseW = baseSpan.offsetWidth;
+      const baseH = baseSpan.offsetHeight;
+      let fontBits = "";
+      fontSpans.forEach(function (s) {
+        fontBits +=
+          s.offsetWidth !== baseW || s.offsetHeight !== baseH ? "1" : "0";
+      });
+      document.body.removeChild(baseSpan);
+      fontSpans.forEach(function (s) {
+        document.body.removeChild(s);
+      });
       signals.push("fonts:" + fontBits);
     } catch {
       signals.push("fonts:err");
