@@ -55,6 +55,13 @@ const MAX_CONNECTIONS_PER_IP = parseMaxConnectionsPerIp(process.env.WS_MAX_CONNE
 // Rate-limit per WS connection (sliding 1-second window).
 const MAX_MESSAGES_PER_SECOND = 20;
 
+// The host answers up to one pong per voter per heartbeat interval; after a
+// mass (re)connect all voters may ping within the same second, so the host
+// ceiling must cover a full room plus timer ticks and control messages.
+export function maxMessagesPerSecond(role: 'host' | 'voter' | null): number {
+  return role === 'host' ? MAX_MESSAGES_PER_SECOND + MAX_VOTERS_PER_ROOM : MAX_MESSAGES_PER_SECOND;
+}
+
 // Bounds for the application payload inside `host-msg` / `host-msg-to` / `voter-msg`.
 // The wrapper itself is already capped by `maxPayload` (64 KB) on the ws server.
 const MAX_DATA_STRING_LENGTH = 1024;
@@ -164,7 +171,7 @@ export class WebSocketRelay {
         windowCount = 0;
       }
       windowCount++;
-      if (windowCount > MAX_MESSAGES_PER_SECOND) {
+      if (windowCount > maxMessagesPerSecond(member?.role ?? null)) {
         console.warn(`[WS Relay] Rate limit exceeded for ${ip}, closing connection`);
         this.send(ws, { type: 'error', message: 'Rate limit exceeded' });
         ws.close();

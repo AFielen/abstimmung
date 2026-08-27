@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { parseMaxConnectionsPerIp, validateDataPayload } from './ws-relay';
+import { maxMessagesPerSecond, parseMaxConnectionsPerIp, validateDataPayload } from './ws-relay';
+
+// ── maxMessagesPerSecond ────────────────────────────────────────────────────
+// Host limit must cover a full room's worth of pong replies arriving in the
+// same second (MAX_VOTERS_PER_ROOM) on top of the base budget.
+assert.equal(maxMessagesPerSecond('host'), 320, 'host limit covers full room');
+assert.equal(maxMessagesPerSecond('voter'), 20, 'voter limit stays strict');
+assert.equal(maxMessagesPerSecond(null), 20, 'pre-join sockets stay strict');
 
 // ── parseMaxConnectionsPerIp ────────────────────────────────────────────────
 assert.equal(parseMaxConnectionsPerIp(undefined), 200, 'default when unset');
