@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 import type { DataConnection } from 'peerjs';
 import type { HostMessage, VoterMessage } from '@/lib/types';
 import { getSignalConfig } from '@/lib/signal-config';
@@ -327,12 +327,16 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
     return () => { destroy(); };
   }, [destroy]);
 
-  return {
-    init,
-    send,
-    markSessionEnded,
-    retryConnect,
-    checkConnection,
-    destroy,
-  };
+  // Stable object identity so consumers can use the transport in dependency arrays
+  return useMemo(
+    () => ({
+      init,
+      send,
+      markSessionEnded,
+      retryConnect,
+      checkConnection,
+      destroy,
+    }),
+    [init, send, markSessionEnded, retryConnect, checkConnection, destroy],
+  );
 }

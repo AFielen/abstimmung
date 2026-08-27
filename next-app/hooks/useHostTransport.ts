@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import type { DataConnection } from 'peerjs';
 import type { HostMessage, VoterMessage } from '@/lib/types';
 import { getSignalConfig } from '@/lib/signal-config';
@@ -202,13 +202,17 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     return () => { destroy(); };
   }, [destroy]);
 
-  return {
-    init,
-    broadcast,
-    sendTo,
-    destroy,
-    peerId,
-    connectionCount,
-    disconnectedCount,
-  };
+  // Stable object identity so consumers can use the transport in dependency arrays
+  return useMemo(
+    () => ({
+      init,
+      broadcast,
+      sendTo,
+      destroy,
+      peerId,
+      connectionCount,
+      disconnectedCount,
+    }),
+    [init, broadcast, sendTo, destroy, peerId, connectionCount, disconnectedCount],
+  );
 }
