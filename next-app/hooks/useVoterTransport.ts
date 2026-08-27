@@ -284,6 +284,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
    * Useful to call on visibility change (tab becomes visible).
    */
   const checkConnection = useCallback(() => {
+    if (!presenterPeerIdRef.current) return; // Not initialized, skip
     if (!connRef.current || !connRef.current.open) {
       if (!isReconnectingRef.current) startReconnectRef.current();
     }
