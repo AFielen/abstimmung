@@ -252,7 +252,9 @@ export class WebSocketRelay {
 
         case 'host-msg': {
           if (!room || !member || member.role !== 'host') return;
-          if (now - bcastWindowStart >= 1000) {
+          // `now` is wall clock: a backwards NTP step would otherwise freeze the
+          // window and drop every later broadcast silently.
+          if (now - bcastWindowStart >= 1000 || now < bcastWindowStart) {
             bcastWindowStart = now;
             bcastWindowCount = 0;
           }
