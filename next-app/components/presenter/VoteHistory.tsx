@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { VoteResult, SessionMode } from '@/lib/types';
 import { generatePdf } from '@/lib/pdf-export';
 import { OUTCOME_BADGE_COLORS } from '@/lib/utils';
@@ -28,7 +28,9 @@ function outcomeBadge(result: VoteResult): { text: string; color: string; bg: st
   }
 }
 
-export default function VoteHistory({
+// memo: PresenterApp re-renders once per second during timed votes and once
+// per incoming vote; the history list only changes when a vote is closed.
+export default memo(function VoteHistory({
   history,
   sessionMode,
   sessionTitle,
@@ -129,4 +131,4 @@ export default function VoteHistory({
       )}
     </div>
   );
-}
+});
