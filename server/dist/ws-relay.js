@@ -123,6 +123,11 @@ class WebSocketRelay {
         // Sliding 1-second window for message rate limiting
         let windowStart = Date.now();
         let windowCount = 0;
+        // Separate window for broadcasts. The host budget above is widened to cover
+        // one pong per voter, but those are targeted `host-msg-to`. A `host-msg`
+        // fans out to the whole room, so it keeps the strict base budget.
+        let bcastWindowStart = Date.now();
+        let bcastWindowCount = 0;
         ws.on('error', (err) => {
             console.error('[WS Relay] WebSocket error:', err.message);
         });
@@ -205,6 +210,16 @@ class WebSocketRelay {
                 case 'host-msg': {
                     if (!room || !member || member.role !== 'host')
                         return;
+                    if (now - bcastWindowStart >= 1000) {
+                        bcastWindowStart = now;
+                        bcastWindowCount = 0;
+                    }
+                    // Drop the broadcast rather than closing the socket: closing the host
+                    // deletes the room and ends the session for every voter.
+                    if (++bcastWindowCount > MAX_MESSAGES_PER_SECOND) {
+                        console.warn(`[WS Relay] Broadcast rate limit exceeded for ${ip}, dropping broadcast`);
+                        return;
+                    }
                     if (!validateDataPayload(msg.data)) {
                         this.send(ws, { type: 'error', message: 'Invalid data payload' });
                         return;

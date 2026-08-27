@@ -19,6 +19,9 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
   // so disconnect tracking must key on the stable deviceId (like the P2P hook)
   // or a reconnecting voter would stay in the disconnected count for 60s.
   const connDeviceMapRef = useRef<Map<string, string>>(new Map());
+  // deviceId -> current connectionId. A close event from a superseded
+  // connection must not mark a device that already reconnected as disconnected.
+  const deviceConnRef = useRef<Map<string, string>>(new Map());
   const disconnectedVotersRef = useRef<Map<string, { disconnectedAt: number }>>(new Map());
   const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -110,10 +113,19 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
             voterConnectionsRef.current.delete(msg.connectionId);
             const devId = connDeviceMapRef.current.get(msg.connectionId);
             connDeviceMapRef.current.delete(msg.connectionId);
-            // Fall back to the connectionId for voters that never registered
-            disconnectedVotersRef.current.set(devId ?? msg.connectionId, {
-              disconnectedAt: Date.now(),
-            });
+            if (devId === undefined) {
+              // Fall back to the connectionId for voters that never registered
+              disconnectedVotersRef.current.set(msg.connectionId, {
+                disconnectedAt: Date.now(),
+              });
+            } else if (deviceConnRef.current.get(devId) === msg.connectionId) {
+              // A superseded connection closing means the device already
+              // reconnected under a new connectionId — not a disconnect.
+              deviceConnRef.current.delete(devId);
+              disconnectedVotersRef.current.set(devId, {
+                disconnectedAt: Date.now(),
+              });
+            }
             updateCounts();
             callbacksRef.current.onDisconnect?.(msg.connectionId);
             break;
@@ -134,6 +146,7 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
             if (voterMsg.type === 'register') {
               if (voterMsg.deviceId) {
                 connDeviceMapRef.current.set(msg.connectionId, voterMsg.deviceId);
+                deviceConnRef.current.set(voterMsg.deviceId, msg.connectionId);
                 disconnectedVotersRef.current.delete(voterMsg.deviceId);
               }
               updateCounts();
@@ -180,6 +193,7 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
     }
     voterConnectionsRef.current.clear();
     connDeviceMapRef.current.clear();
+    deviceConnRef.current.clear();
     disconnectedVotersRef.current.clear();
     setPeerId(null);
     setConnectionCount(0);
