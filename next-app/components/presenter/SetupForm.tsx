@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { SessionMode, TransportMode, TokenInfo } from '@/lib/types';
 import { generateToken } from '@/lib/token';
 
@@ -21,6 +22,9 @@ export default function SetupForm({ onStartSession }: SetupFormProps) {
   const [transportMode, setTransportMode] = useState<TransportMode>('p2p');
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  // Portal target exists only after mount (SSR renders without document)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const canStart = useMemo(() => {
     if (!title.trim()) return false;
@@ -416,8 +420,11 @@ export default function SetupForm({ onStartSession }: SetupFormProps) {
         </button>
       </div>
 
-      {/* Hidden print area */}
-      <div id="print-tokens-area" />
+      {/* Hidden print area. Rendered as a direct child of <body> via portal:
+          the print CSS hides `body > *:not(#print-tokens-area)`, which only
+          works if this element is NOT nested inside <main> (display:none on an
+          ancestor would hide it regardless of its own display value). */}
+      {mounted && createPortal(<div id="print-tokens-area" />, document.body)}
     </form>
   );
 }
