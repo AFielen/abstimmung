@@ -10,6 +10,9 @@ type Row = {
   lastVotedAt: Date | null;
 };
 
+// Collator ist zustandslos — einmal anlegen statt pro Render
+const nameCollator = new Intl.Collator("de", { sensitivity: "base" });
+
 export async function VoterStatusPanel({
   resolutionId,
   topIds,
@@ -66,10 +69,9 @@ export async function VoterStatusPanel({
   const pendingCount = rows.filter((r) => r.votedTops === 0).length;
   const pct = eligibleCount > 0 ? (completedCount / eligibleCount) * 100 : 0;
 
-  const collator = new Intl.Collator("de", { sensitivity: "base" });
   const pending = rows
     .filter((r) => r.votedTops < totalTops)
-    .sort((a, b) => collator.compare(a.name, b.name));
+    .sort((a, b) => nameCollator.compare(a.name, b.name));
   const voted = rows
     .filter((r) => r.votedTops === totalTops && totalTops > 0)
     .sort((a, b) => {
