@@ -251,8 +251,9 @@ export class WebSocketRelay {
             return;
           }
           room.lastActivity = Date.now();
+          const raw = JSON.stringify({ type: 'host-data', data: msg.data } satisfies ServerOutbound);
           room.voters.forEach((voter) => {
-            this.send(voter.ws, { type: 'host-data', data: msg.data });
+            this.sendRaw(voter.ws, raw);
           });
           break;
         }
@@ -302,8 +303,9 @@ export class WebSocketRelay {
       if (!room || !member) return;
       if (member.role === 'host') {
         console.log(`[WS Relay] Host disconnected, closing room ${room.id}`);
+        const raw = JSON.stringify({ type: 'error', message: 'Host disconnected' } satisfies ServerOutbound);
         room.voters.forEach((voter) => {
-          this.send(voter.ws, { type: 'error', message: 'Host disconnected' });
+          this.sendRaw(voter.ws, raw);
           voter.ws.close();
         });
         this.rooms.delete(room.id);
@@ -317,14 +319,19 @@ export class WebSocketRelay {
     });
   }
 
-  private send(ws: WebSocket, msg: ServerOutbound) {
+  // Pre-serialized variant so fan-outs to a whole room stringify only once.
+  private sendRaw(ws: WebSocket, raw: string) {
     if (ws.readyState === WebSocket.OPEN) {
       try {
-        ws.send(JSON.stringify(msg));
+        ws.send(raw);
       } catch (err) {
         console.error('[WS Relay] send error:', (err as Error).message);
       }
     }
+  }
+
+  private send(ws: WebSocket, msg: ServerOutbound) {
+    this.sendRaw(ws, JSON.stringify(msg));
   }
 
   private cleanupStaleRooms() {
@@ -332,21 +339,18 @@ export class WebSocketRelay {
     this.rooms.forEach((room, id) => {
       if (now - room.lastActivity > ROOM_TTL_MS) {
         console.log(`[WS Relay] Cleaning up stale room: ${id}`);
+        const raw = JSON.stringify({ type: 'error', message: 'Room expired' } satisfies ServerOutbound);
         room.voters.forEach((voter) => {
-          this.send(voter.ws, { type: 'error', message: 'Room expired' });
+          this.sendRaw(voter.ws, raw);
           voter.ws.close();
         });
         if (room.host) {
-          this.send(room.host.ws, { type: 'error', message: 'Room expired' });
+          this.sendRaw(room.host.ws, raw);
           room.host.ws.close();
         }
         this.rooms.delete(id);
       }
     });
-  }
-
-  getRoomCount(): number {
-    return this.rooms.size;
   }
 
   shutdown() {
