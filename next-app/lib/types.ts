@@ -35,7 +35,14 @@ export interface TokenInfo {
   votedInRounds: string[];
 }
 
-// PeerJS message types
+// Shape guard for messages arriving over the wire (PeerJS DataChannel or
+// WS relay). Deliberately only checks for a `type` key — the value itself is
+// narrowed by the switch statements in the consumers.
+export function hasMessageType(value: unknown): value is { type: unknown } {
+  return typeof value === 'object' && value !== null && 'type' in value;
+}
+
+// Transport message types (used verbatim in P2P and server mode)
 export type HostMessage =
   | { type: 'vote-started'; topic: string; description: string; voteType: VoteType; options: string[]; voteRoundId: string; timerSeconds: number; mode: SessionMode }
   | { type: 'vote-closed'; result: VoteResult }
@@ -68,10 +75,7 @@ export interface PresenterState {
   currentVote: VoteData | null;
   history: VoteResult[];
   timerSecondsLeft: number;
-  connectedCount: number;
-  disconnectedCount: number;
   tokenCodes: Record<string, TokenInfo>;
-  generatedCodes: string[];
 }
 
 // Voter state

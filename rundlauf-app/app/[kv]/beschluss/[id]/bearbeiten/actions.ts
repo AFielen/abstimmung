@@ -17,24 +17,29 @@ import {
 import { sendResolutionInvite } from "@/lib/mail/templates";
 import { DEFAULT_OPTIONS, MIN_FRIST_DAYS, partitionInviteResults } from "@/lib/resolution";
 import { requireAdmin } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 export type ActionState = { ok: boolean; message?: string };
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
 
-async function loadDraft(kv: string, resolutionId: string) {
+type LoadDraftResult =
+  | { ok: true; ctx: Awaited<ReturnType<typeof requireAdmin>>; r: typeof resolutions.$inferSelect }
+  | { ok: false; message: string };
+
+async function loadDraft(kv: string, resolutionId: string): Promise<LoadDraftResult> {
   const ctx = await requireAdmin(kv);
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, resolutionId)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
-    return { error: "Beschluss nicht gefunden" as const, ctx, r: null };
+  if (!belongsToTenant(r, ctx.tenant.id)) {
+    return { ok: false, message: "Beschluss nicht gefunden" };
   }
   if (r.status !== "draft") {
-    return { error: "Beschluss ist kein Entwurf mehr" as const, ctx, r };
+    return { ok: false, message: "Beschluss ist kein Entwurf mehr" };
   }
-  return { error: null, ctx, r };
+  return { ok: true, ctx, r };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -59,10 +64,11 @@ export async function updateResolutionMeta(
     fristEnde: formData.get("fristEnde"),
     voteChangeMode: formData.get("voteChangeMode"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
-  const { error, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { r } = draft;
 
   const fristEnde = new Date(parsed.data.fristEnde);
   if (Number.isNaN(fristEnde.getTime())) {
@@ -76,9 +82,9 @@ export async function updateResolutionMeta(
       fristEnde,
       voteChangeMode: parsed.data.voteChangeMode,
     })
-    .where(eq(resolutions.id, r!.id));
+    .where(eq(resolutions.id, r.id));
 
-  revalidatePath(`/${parsed.data.kv}/beschluss/${r!.id}/bearbeiten`);
+  revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "Gespeichert" };
 }
 
@@ -112,25 +118,24 @@ export async function addAgendaItem(
     quorumPct: formData.get("quorumPct") ?? 75,
     mehrheit: formData.get("mehrheit"),
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
   const existing = (
     await db
       .select({ maxOrdinal: max(agendaItems.ordinal) })
       .from(agendaItems)
-      .where(eq(agendaItems.resolutionId, r!.id))
+      .where(eq(agendaItems.resolutionId, r.id))
   )[0];
   const nextOrdinal = (existing?.maxOrdinal ?? 0) + 1;
 
   const inserted = await db
     .insert(agendaItems)
     .values({
-      resolutionId: r!.id,
+      resolutionId: r.id,
       ordinal: nextOrdinal,
       titel: parsed.data.titel.trim(),
       beschlussvorschlagMd: parsed.data.beschlussvorschlag.trim(),
@@ -149,10 +154,10 @@ export async function addAgendaItem(
     actorUserId: ctx.user.id,
     targetType: "agenda_item",
     targetId: inserted[0].id,
-    payload: { resolutionId: r!.id, ordinal: nextOrdinal, titel: inserted[0].titel },
+    payload: { resolutionId: r.id, ordinal: nextOrdinal, titel: inserted[0].titel },
   });
 
-  revalidatePath(`/${parsed.data.kv}/beschluss/${r!.id}/bearbeiten`);
+  revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "TOP hinzugefügt" };
 }
 
@@ -179,12 +184,11 @@ export async function updateAgendaItem(
     quorumPct: formData.get("quorumPct") ?? 75,
     mehrheit: formData.get("mehrheit"),
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
   const top = (
     await db
@@ -193,7 +197,7 @@ export async function updateAgendaItem(
       .where(
         and(
           eq(agendaItems.id, parsed.data.agendaItemId),
-          eq(agendaItems.resolutionId, r!.id),
+          eq(agendaItems.resolutionId, r.id),
         ),
       )
       .limit(1)
@@ -221,7 +225,7 @@ export async function updateAgendaItem(
     targetId: top.id,
   });
 
-  revalidatePath(`/${parsed.data.kv}/beschluss/${r!.id}/bearbeiten`);
+  revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "TOP aktualisiert" };
 }
 
@@ -243,10 +247,11 @@ export async function deleteAgendaItem(
     resolutionId: formData.get("resolutionId"),
     agendaItemId: formData.get("agendaItemId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
   const top = (
     await db
@@ -255,7 +260,7 @@ export async function deleteAgendaItem(
       .where(
         and(
           eq(agendaItems.id, parsed.data.agendaItemId),
-          eq(agendaItems.resolutionId, r!.id),
+          eq(agendaItems.resolutionId, r.id),
         ),
       )
       .limit(1)
@@ -268,7 +273,7 @@ export async function deleteAgendaItem(
   const remaining = await db
     .select()
     .from(agendaItems)
-    .where(eq(agendaItems.resolutionId, r!.id))
+    .where(eq(agendaItems.resolutionId, r.id))
     .orderBy(asc(agendaItems.ordinal));
   for (let i = 0; i < remaining.length; i++) {
     const desired = i + 1;
@@ -288,7 +293,7 @@ export async function deleteAgendaItem(
     targetId: top.id,
   });
 
-  revalidatePath(`/${parsed.data.kv}/beschluss/${r!.id}/bearbeiten`);
+  revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "TOP entfernt" };
 }
 
@@ -310,10 +315,11 @@ export async function deleteAttachment(
     resolutionId: formData.get("resolutionId"),
     attachmentId: formData.get("attachmentId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
   const att = (
     await db
@@ -322,7 +328,7 @@ export async function deleteAttachment(
       .where(
         and(
           eq(attachments.id, parsed.data.attachmentId),
-          eq(attachments.resolutionId, r!.id),
+          eq(attachments.resolutionId, r.id),
         ),
       )
       .limit(1)
@@ -340,7 +346,7 @@ export async function deleteAttachment(
     payload: { filename: att.filename },
   });
 
-  revalidatePath(`/${parsed.data.kv}/beschluss/${r!.id}/bearbeiten`);
+  revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "Anlage entfernt" };
 }
 
@@ -363,16 +369,15 @@ export async function publishResolution(
     resolutionId: formData.get("resolutionId"),
     eligibleUserIds,
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
   // Frist erneut prüfen
   const minDate = new Date(Date.now() + MIN_FRIST_DAYS * 24 * 60 * 60 * 1000);
-  if (r!.fristEnde.getTime() < minDate.getTime()) {
+  if (r.fristEnde.getTime() < minDate.getTime()) {
     return {
       ok: false,
       message: `Die Frist liegt zu nah. Mindestens ${MIN_FRIST_DAYS} Tage in der Zukunft.`,
@@ -384,7 +389,7 @@ export async function publishResolution(
     await db
       .select({ id: agendaItems.id })
       .from(agendaItems)
-      .where(eq(agendaItems.resolutionId, r!.id))
+      .where(eq(agendaItems.resolutionId, r.id))
   ).length;
   if (topCount < 1) {
     return { ok: false, message: "Mindestens ein TOP erforderlich." };
@@ -432,7 +437,7 @@ export async function publishResolution(
   await db.transaction(async (tx) => {
     await tx.insert(eligibleVoters).values(
       validMembers.map((m) => ({
-        resolutionId: r!.id,
+        resolutionId: r.id,
         userId: m.userId,
         nameSnapshot: m.name ?? m.email,
         emailSnapshot: m.email,
@@ -443,7 +448,7 @@ export async function publishResolution(
     await tx
       .update(resolutions)
       .set({ status: "laufend", startedAt: publishedAt })
-      .where(eq(resolutions.id, r!.id));
+      .where(eq(resolutions.id, r.id));
   });
 
   await logAudit({
@@ -451,21 +456,21 @@ export async function publishResolution(
     tenantId: ctx.tenant.id,
     actorUserId: ctx.user.id,
     targetType: "resolution",
-    targetId: r!.id,
+    targetId: r.id,
     payload: {
       eligibleCount: validMembers.length,
       activeCount: activeMembers.length,
       pendingInviteCount,
       topCount,
-      fristEnde: r!.fristEnde.toISOString(),
+      fristEnde: r.fristEnde.toISOString(),
     },
   });
 
   // Einladungs-Mails an aktive Mitglieder. Eingeladene erhalten den Link beim
   // Beitritt automatisch (siehe lib/mail/pending-invites.ts).
-  const link = `${process.env.APP_URL?.replace(/\/$/, "")}/${ctx.tenant.slug}/beschluss/${r!.id}`;
+  const link = `${process.env.APP_URL?.replace(/\/$/, "")}/${ctx.tenant.slug}/beschluss/${r.id}`;
   const subjectTitle =
-    r!.betreff || `Umlaufverfahren mit ${topCount} Beschlussvorlage${topCount === 1 ? "" : "n"}`;
+    r.betreff || `Umlaufverfahren mit ${topCount} Beschlussvorlage${topCount === 1 ? "" : "n"}`;
   const sendResults = await Promise.allSettled(
     activeMembers.map((m) =>
       sendResolutionInvite({
@@ -473,7 +478,7 @@ export async function publishResolution(
         tenantName: ctx.tenant.name,
         resolutionTitle: subjectTitle,
         resolutionLink: link,
-        fristEnde: r!.fristEnde,
+        fristEnde: r.fristEnde,
         topCount,
       }),
     ),
@@ -489,7 +494,7 @@ export async function publishResolution(
       .set({ inviteEmailSentAt: publishedAt })
       .where(
         and(
-          eq(eligibleVoters.resolutionId, r!.id),
+          eq(eligibleVoters.resolutionId, r.id),
           inArray(eligibleVoters.userId, sentUserIds),
         ),
       );
@@ -502,13 +507,13 @@ export async function publishResolution(
       tenantId: ctx.tenant.id,
       actorUserId: ctx.user.id,
       targetType: "resolution",
-      targetId: r!.id,
+      targetId: r.id,
       payload: { failedCount: failed.length, failed },
     });
   }
 
   revalidatePath(`/${parsed.data.kv}`);
-  redirect(`/${parsed.data.kv}/beschluss/${r!.id}`);
+  redirect(`/${parsed.data.kv}/beschluss/${r.id}`);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -527,19 +532,20 @@ export async function discardDraft(
     kv: formData.get("kv"),
     resolutionId: formData.get("resolutionId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
-  const { error, ctx, r } = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
-  if (error) return { ok: false, message: error };
+  const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
+  if (!draft.ok) return draft;
+  const { ctx, r } = draft;
 
-  await db.delete(resolutions).where(eq(resolutions.id, r!.id));
+  await db.delete(resolutions).where(eq(resolutions.id, r.id));
 
   await logAudit({
     action: "resolution.discarded",
     tenantId: ctx.tenant.id,
     actorUserId: ctx.user.id,
     targetType: "resolution",
-    targetId: r!.id,
+    targetId: r.id,
   });
 
   revalidatePath(`/${parsed.data.kv}`);

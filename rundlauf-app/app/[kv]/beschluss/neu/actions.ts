@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { bodies, resolutions } from "@/lib/db/schema";
 import { MIN_FRIST_DAYS } from "@/lib/resolution";
 import { requireAdmin } from "@/lib/tenant";
+import { invalidInput } from "@/lib/action-helpers";
 
 const schema = z.object({
   kv: z.string().min(1),
@@ -33,9 +34,7 @@ export async function createResolution(
     fristEnde: formData.get("fristEnde"),
     voteChangeMode: formData.get("voteChangeMode"),
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
   const ctx = await requireAdmin(parsed.data.kv);
 

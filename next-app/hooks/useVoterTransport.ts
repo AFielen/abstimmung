@@ -1,7 +1,7 @@
 'use client';
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
 import type { DataConnection } from 'peerjs';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getSignalConfig } from '@/lib/signal-config';
 
 interface VoterTransportCallbacks {
@@ -66,7 +66,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
 
   const setupDataHandler = useCallback((c: DataConnection) => {
     c.on('data', (rawData: unknown) => {
-      if (typeof rawData !== 'object' || !rawData || !('type' in rawData)) return;
+      if (!hasMessageType(rawData)) return;
       const data = rawData as HostMessage;
       // Filter out heartbeat pong responses
       if (data.type === 'pong') return;
@@ -225,7 +225,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
 
     const peer = await createPeerInstance();
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       peerRef.current = peer;
 
       peer.on('open', () => {
@@ -243,7 +243,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
         });
       });
 
-      peer.on('error', (err: { type?: string }) => {
+      peer.on('error', () => {
         if (sessionEndedRef.current) return;
         if (!isReconnectingRef.current) startReconnectRef.current();
       });
@@ -284,6 +284,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
    * Useful to call on visibility change (tab becomes visible).
    */
   const checkConnection = useCallback(() => {
+    if (!presenterPeerIdRef.current) return; // Not initialized, skip
     if (!connRef.current || !connRef.current.open) {
       if (!isReconnectingRef.current) startReconnectRef.current();
     }
@@ -326,12 +327,16 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
     return () => { destroy(); };
   }, [destroy]);
 
-  return {
-    init,
-    send,
-    markSessionEnded,
-    retryConnect,
-    checkConnection,
-    destroy,
-  };
+  // Stable object identity so consumers can use the transport in dependency arrays
+  return useMemo(
+    () => ({
+      init,
+      send,
+      markSessionEnded,
+      retryConnect,
+      checkConnection,
+      destroy,
+    }),
+    [init, send, markSessionEnded, retryConnect, checkConnection, destroy],
+  );
 }

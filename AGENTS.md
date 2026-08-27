@@ -57,7 +57,6 @@ abstimmung/
 │   ├── hooks/                        # 4 Transport-Hooks (P2P + Server)
 │   ├── lib/
 │   │   ├── types.ts                  # Shared TypeScript Types
-│   │   ├── version.ts                # App-Version
 │   │   ├── presenter-reducer.ts      # Presenter State Management
 │   │   ├── voter-reducer.ts          # Voter State Management
 │   │   └── ...                       # Utils, Fingerprinting, PDF

@@ -5,13 +5,19 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createMagicToken } from "@/lib/auth/magic";
 import { logAudit } from "@/lib/audit";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { db } from "@/lib/db";
 import { memberships, users } from "@/lib/db/schema";
 import { parseMembersFile } from "@/lib/import/parse-members";
 import { sendInviteLink } from "@/lib/mail/templates";
 import { requireAdmin, type TenantContext } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 // ─── Shared helper ────────────────────────────────────────────────────────
+
+// Jede Einladung umfasst mehrere Queries plus einen Mailjet-Call; 5 parallel
+// bleibt unter dem DB-Pool-Limit (max: 10) und verkuerzt grosse Laeufe stark.
+const INVITE_CONCURRENCY = 5;
 
 type InviteOutcome =
   | { kind: "created" }
@@ -122,9 +128,7 @@ export async function inviteMember(
     role: formData.get("role"),
     name: formData.get("name") || undefined,
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
   const ctx = await requireAdmin(parsed.data.kv);
 
   const outcome = await inviteUserToTenant({
@@ -164,7 +168,7 @@ export async function removeMember(
     kv: formData.get("kv"),
     membershipId: formData.get("membershipId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
   const m = (
@@ -174,7 +178,7 @@ export async function removeMember(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -213,7 +217,7 @@ export async function changeRole(
     membershipId: formData.get("membershipId"),
     role: formData.get("role"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
   const m = (
@@ -223,7 +227,7 @@ export async function changeRole(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -419,6 +423,9 @@ export async function confirmMemberImport(
   const ownEmail = ctx.user.email.toLowerCase();
   const seen = new Set<string>();
 
+  // Erst validieren und deduplizieren (sequenziell, Reihenfolge der Eingabe),
+  // dann die eigentlichen Einladungen mit begrenzter Parallelität ausführen.
+  const toInvite: { email: string; name?: string; role: "admin" | "member" }[] = [];
   for (const row of rows) {
     const parsed = confirmRowSchema.safeParse({
       email: typeof row?.email === "string" ? row.email.trim().toLowerCase() : "",
@@ -439,23 +446,31 @@ export async function confirmMemberImport(
     }
     if (seen.has(email)) continue; // ignore duplicates silently in confirm step
     seen.add(email);
+    toInvite.push({ email, name: parsed.data.name, role: parsed.data.role });
+  }
 
+  // Nach dem Dedupe betrifft jede Einladung einen anderen Benutzer —
+  // die Läufe teilen sich keine Zeilen und sind parallel unkritisch.
+  const outcomes = await mapWithConcurrency(toInvite, INVITE_CONCURRENCY, async (item) => {
     try {
-      const outcome = await inviteUserToTenant({
+      return await inviteUserToTenant({
         ctx,
-        email,
-        name: parsed.data.name,
-        role: parsed.data.role,
+        email: item.email,
+        name: item.name,
+        role: item.role,
         source: "import",
       });
-      if (outcome.kind === "created") created++;
-      else if (outcome.kind === "resent") resent++;
-      else if (outcome.kind === "already_active") alreadyActive++;
     } catch (err) {
-      console.error("[import] invite failed", email, err);
-      failed.push({ email, message: "Fehler beim Versenden" });
+      console.error("[import] invite failed", item.email, err);
+      return { kind: "failed" as const };
     }
-  }
+  });
+  outcomes.forEach((outcome, i) => {
+    if (outcome.kind === "created") created++;
+    else if (outcome.kind === "resent") resent++;
+    else if (outcome.kind === "already_active") alreadyActive++;
+    else failed.push({ email: toInvite[i].email, message: "Fehler beim Versenden" });
+  });
 
   await logAudit({
     action: "membership.import_completed",
@@ -489,7 +504,7 @@ export async function resendInvite(
     kv: formData.get("kv"),
     membershipId: formData.get("membershipId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
 
@@ -500,7 +515,7 @@ export async function resendInvite(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -533,7 +548,7 @@ export async function resendAllPendingInvites(
 ): Promise<InviteState> {
   const kv = formData.get("kv");
   if (typeof kv !== "string" || kv.length === 0) {
-    return { ok: false, message: "Ungültige Eingabe" };
+    return invalidInput();
   }
   const ctx = await requireAdmin(kv);
 
@@ -559,9 +574,9 @@ export async function resendAllPendingInvites(
     };
   }
 
-  let sent = 0;
-  const failed: string[] = [];
-  for (const p of pending) {
+  // Jede ausstehende Einladung gehört zu einem anderen Benutzer — parallel
+  // mit begrenzter Parallelität statt seriell.
+  const results = await mapWithConcurrency(pending, INVITE_CONCURRENCY, async (p) => {
     try {
       await inviteUserToTenant({
         ctx,
@@ -570,11 +585,17 @@ export async function resendAllPendingInvites(
         role: p.role === "admin" ? "admin" : "member",
         source: "resend",
       });
-      sent++;
+      return { sent: true, email: p.email };
     } catch (err) {
       console.error("[resend-all] invite failed", p.email, err);
-      failed.push(p.email);
+      return { sent: false, email: p.email };
     }
+  });
+  let sent = 0;
+  const failed: string[] = [];
+  for (const r of results) {
+    if (r.sent) sent++;
+    else failed.push(r.email);
   }
 
   await logAudit({

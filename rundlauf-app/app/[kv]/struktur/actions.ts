@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { bodies, organizations, resolutions } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 export type StrukturState = { ok: boolean; message?: string };
 
@@ -29,9 +30,7 @@ export async function createOrganization(
     type: formData.get("type"),
     description: formData.get("description") || undefined,
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
   const ctx = await requireAdmin(parsed.data.kv);
 
   const [org] = await db
@@ -70,13 +69,13 @@ export async function deleteOrganization(
     kv: formData.get("kv"),
     organizationId: formData.get("organizationId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
 
   const org = (
     await db.select().from(organizations).where(eq(organizations.id, parsed.data.organizationId)).limit(1)
   )[0];
-  if (!org || org.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(org, ctx.tenant.id)) {
     return { ok: false, message: "Organisation nicht gefunden" };
   }
 
@@ -128,9 +127,7 @@ export async function createBody(
     defaultQuorumPct: formData.get("defaultQuorumPct") ?? 75,
     defaultMehrheit: formData.get("defaultMehrheit") ?? "simple",
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
   const ctx = await requireAdmin(parsed.data.kv);
 
   let orgId: string | null = null;
@@ -138,7 +135,7 @@ export async function createBody(
     const org = (
       await db.select().from(organizations).where(eq(organizations.id, parsed.data.organizationId)).limit(1)
     )[0];
-    if (!org || org.tenantId !== ctx.tenant.id) {
+    if (!belongsToTenant(org, ctx.tenant.id)) {
       return { ok: false, message: "Organisation nicht gefunden" };
     }
     orgId = org.id;
@@ -181,13 +178,13 @@ export async function archiveBody(
     kv: formData.get("kv"),
     bodyId: formData.get("bodyId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
 
   const body = (
     await db.select().from(bodies).where(eq(bodies.id, parsed.data.bodyId)).limit(1)
   )[0];
-  if (!body || body.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(body, ctx.tenant.id)) {
     return { ok: false, message: "Gremium nicht gefunden" };
   }
 
@@ -228,13 +225,13 @@ export async function unarchiveBody(
     kv: formData.get("kv"),
     bodyId: formData.get("bodyId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
 
   const body = (
     await db.select().from(bodies).where(eq(bodies.id, parsed.data.bodyId)).limit(1)
   )[0];
-  if (!body || body.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(body, ctx.tenant.id)) {
     return { ok: false, message: "Gremium nicht gefunden" };
   }
 
@@ -254,13 +251,13 @@ export async function deleteBody(
     kv: formData.get("kv"),
     bodyId: formData.get("bodyId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
 
   const body = (
     await db.select().from(bodies).where(eq(bodies.id, parsed.data.bodyId)).limit(1)
   )[0];
-  if (!body || body.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(body, ctx.tenant.id)) {
     return { ok: false, message: "Gremium nicht gefunden" };
   }
 

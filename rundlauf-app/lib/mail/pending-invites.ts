@@ -1,5 +1,6 @@
 import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import { logAudit } from "@/lib/audit";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { db } from "@/lib/db";
 import {
   agendaItems,
@@ -8,6 +9,10 @@ import {
   tenants,
 } from "@/lib/db/schema";
 import { sendResolutionInvite } from "@/lib/mail/templates";
+
+// Mail-Versand + Marker-Update pro Verfahren; 5 gleichzeitig bleibt deutlich
+// unter dem DB-Pool-Limit (max: 10) und ist fuer Mailjet unkritisch.
+const MAIL_CONCURRENCY = 5;
 
 /**
  * Versendet Beschluss-Einladungs-Mails an einen Nutzer für alle laufenden
@@ -65,7 +70,7 @@ export async function sendPendingResolutionInvites(opts: {
 
   const baseUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
 
-  for (const p of pending) {
+  await mapWithConcurrency(pending, MAIL_CONCURRENCY, async (p) => {
     const topCount = topCountMap.get(p.resolutionId);
     const subjectTitle =
       p.betreff ||
@@ -101,5 +106,5 @@ export async function sendPendingResolutionInvites(opts: {
       // inviteEmailSentAt bleibt NULL; manuelles Nachfassen nötig, da der
       // Status-Wechsel invited→active nur einmal stattfindet.
     }
-  }
+  });
 }

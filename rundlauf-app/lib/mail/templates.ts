@@ -20,6 +20,19 @@ const HTML_WRAPPER = (heading: string, body: string) => `<!doctype html>
   </div>
 </body></html>`;
 
+// Wiederkehrende HTML-Bausteine — reine Substring-Extraktionen, der erzeugte
+// Mail-Inhalt bleibt byte-identisch.
+const ctaButton = (href: string, label: string) =>
+  `<p style="margin: 24px 0;"><a href="${href}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">${label}</a></p>`;
+
+const linkFallback = (link: string, withHint = false) =>
+  `<p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${withHint ? "Oder kopiere diesen Link in deinen Browser:<br>" : ""}${link}</p>`;
+
+const greetingHtml = (name?: string) => (name ? `Hallo <strong>${name}</strong>,` : "Hallo,");
+
+const formatFrist = (d: Date) =>
+  d.toLocaleString("de-DE", { dateStyle: "long", timeStyle: "short" });
+
 export async function sendLoginLink(opts: {
   to: { email: string; name?: string };
   rawToken: string;
@@ -29,8 +42,8 @@ export async function sendLoginLink(opts: {
   const html = HTML_WRAPPER(
     "Dein Anmelde-Link",
     `<p>Klicke auf den Button, um dich anzumelden. Der Link ist <strong>60 Minuten</strong> gültig.</p>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Jetzt anmelden</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${link}</p>`,
+     ${ctaButton(link, "Jetzt anmelden")}
+     ${linkFallback(link)}`,
   );
   await sendMail({ to: opts.to, subject: "Anmelden bei DRK Rundlaufbeschlüsse", text, html });
 }
@@ -44,8 +57,8 @@ export async function sendRegisterLink(opts: {
   const html = HTML_WRAPPER(
     "Willkommen bei DRK Rundlaufbeschlüsse",
     `<p>Bitte bestätige deine E-Mail-Adresse, um die Registrierung abzuschließen. Der Link ist <strong>60 Minuten</strong> gültig.</p>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">E-Mail bestätigen</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${link}</p>`,
+     ${ctaButton(link, "E-Mail bestätigen")}
+     ${linkFallback(link)}`,
   );
   await sendMail({ to: opts.to, subject: "Bestätige deine Registrierung", text, html });
 }
@@ -74,17 +87,14 @@ export async function sendInviteLink(opts: {
     "Falls du diese Einladung nicht erwartest, kannst du diese E-Mail einfach ignorieren. Ohne Klick passiert nichts.",
   ].join("\n");
 
-  const greetingHtml = opts.to.name
-    ? `Hallo <strong>${opts.to.name}</strong>,`
-    : "Hallo,";
 
   const html = HTML_WRAPPER(
     `Einladung in ${opts.tenantName}`,
-    `<p>${greetingHtml}</p>
+    `<p>${greetingHtml(opts.to.name)}</p>
      <p><strong>${opts.inviterName}</strong> hat dich eingeladen, im Kreisverband <strong>${opts.tenantName}</strong> an digitalen Umlaufbeschlüssen mitzuwirken.</p>
      <p>DRK Rundlaufbeschlüsse ist das Online-Tool, mit dem die Gremien des Deutschen Roten Kreuzes rechtssicher und transparent zwischen Sitzungen über Beschlussvorlagen abstimmen.</p>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Einladung annehmen</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">Oder kopiere diesen Link in deinen Browser:<br>${link}</p>
+     ${ctaButton(link, "Einladung annehmen")}
+     ${linkFallback(link, true)}
      <p style="font-size: 0.85rem; color: #6b7280;">Nach dem Klick bist du direkt angemeldet – ein Passwort wird nicht benötigt. Der Link ist <strong>7 Tage</strong> gültig.</p>
      <p style="font-size: 0.85rem; color: #6b7280;">Falls du diese Einladung nicht erwartest, kannst du diese E-Mail einfach ignorieren – ohne Klick passiert nichts.</p>`,
   );
@@ -107,7 +117,7 @@ export async function sendSuperadminNewTenantNotice(opts: {
        <li><strong>Slug:</strong> ${opts.tenantSlug}</li>
        <li><strong>Angelegt von:</strong> ${opts.createdByEmail}</li>
      </ul>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Moderations-Queue öffnen</a></p>`,
+     ${ctaButton(link, "Moderations-Queue öffnen")}`,
   );
   await sendMail({ to: opts.to, subject: `Neuer KV: ${opts.tenantName}`, text, html });
 }
@@ -122,7 +132,7 @@ export async function sendTenantApproved(opts: {
   const html = HTML_WRAPPER(
     `KV ${opts.tenantName} freigeschaltet`,
     `<p>Dein Kreisverband <strong>${opts.tenantName}</strong> wurde freigeschaltet. Du kannst jetzt Mitglieder einladen und Beschlüsse anlegen.</p>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Zur Übersicht</a></p>`,
+     ${ctaButton(link, "Zur Übersicht")}`,
   );
   await sendMail({ to: opts.to, subject: `KV ${opts.tenantName} freigeschaltet`, text, html });
 }
@@ -149,10 +159,7 @@ export async function sendResolutionInvite(opts: {
   fristEnde: Date;
   topCount?: number;
 }) {
-  const fristStr = opts.fristEnde.toLocaleString("de-DE", {
-    dateStyle: "long",
-    timeStyle: "short",
-  });
+  const fristStr = formatFrist(opts.fristEnde);
   const topInfo =
     typeof opts.topCount === "number"
       ? `${opts.topCount} Beschlussvorlage${opts.topCount === 1 ? "" : "n"} · `
@@ -165,7 +172,7 @@ export async function sendResolutionInvite(opts: {
        <strong>${opts.resolutionTitle}</strong><br/>
        ${topInfo}Frist: ${fristStr}
      </p>
-     <p style="margin: 24px 0;"><a href="${opts.resolutionLink}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Jetzt abstimmen</a></p>`,
+     ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}`,
   );
   await sendMail({
     to: opts.to,
@@ -182,25 +189,19 @@ export async function sendVoteReminder(opts: {
   resolutionLink: string;
   fristEnde: Date;
 }) {
-  const fristStr = opts.fristEnde.toLocaleString("de-DE", {
-    dateStyle: "long",
-    timeStyle: "short",
-  });
+  const fristStr = formatFrist(opts.fristEnde);
   const greeting = opts.to.name ? ` ${opts.to.name}` : "";
   const text = `Hallo${greeting},\n\nim Kreisverband "${opts.tenantName}" läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:\n\n"${opts.resolutionTitle}"\n\nFrist: ${fristStr}\n\nJetzt abstimmen:\n${opts.resolutionLink}`;
-  const greetingHtml = opts.to.name
-    ? `Hallo <strong>${opts.to.name}</strong>,`
-    : "Hallo,";
   const html = HTML_WRAPPER(
     "Erinnerung: bitte noch abstimmen",
-    `<p>${greetingHtml}</p>
+    `<p>${greetingHtml(opts.to.name)}</p>
      <p>im Kreisverband <strong>${opts.tenantName}</strong> läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:</p>
      <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
        <strong>${opts.resolutionTitle}</strong><br/>
        Frist: ${fristStr}
      </p>
-     <p style="margin: 24px 0;"><a href="${opts.resolutionLink}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Jetzt abstimmen</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${opts.resolutionLink}</p>`,
+     ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}
+     ${linkFallback(opts.resolutionLink)}`,
   );
   await sendMail({
     to: opts.to,
@@ -227,15 +228,12 @@ export async function sendInviteReminder(opts: {
     "",
     "Der Link ist 7 Tage gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.",
   ].join("\n");
-  const greetingHtml = opts.to.name
-    ? `Hallo <strong>${opts.to.name}</strong>,`
-    : "Hallo,";
   const html = HTML_WRAPPER(
     `Erinnerung: Einladung zu ${opts.tenantName} noch offen`,
-    `<p>${greetingHtml}</p>
+    `<p>${greetingHtml(opts.to.name)}</p>
      <p>im Kreisverband <strong>${opts.tenantName}</strong> wartet eine Abstimmung auf dich – deine Einladung ist noch offen.</p>
-     <p style="margin: 24px 0;"><a href="${link}" style="background: #e30613; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">Einladung annehmen</a></p>
-     <p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">Oder kopiere diesen Link in deinen Browser:<br>${link}</p>
+     ${ctaButton(link, "Einladung annehmen")}
+     ${linkFallback(link, true)}
      <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist <strong>7 Tage</strong> gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.</p>`,
   );
   await sendMail({

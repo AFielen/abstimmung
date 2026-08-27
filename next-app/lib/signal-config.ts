@@ -11,6 +11,19 @@ function isSecureScheme(protocol: string): boolean {
   return protocol === 'https:' || protocol === 'wss:';
 }
 
+// Parse NEXT_PUBLIC_SIGNAL_SERVER_URL; null when unset or invalid (with a
+// warning), so callers fall through to hostname auto-detection.
+function parseSignalEnvUrl(): URL | null {
+  const envUrl = process.env.NEXT_PUBLIC_SIGNAL_SERVER_URL;
+  if (!envUrl) return null;
+  try {
+    return new URL(envUrl);
+  } catch {
+    console.warn('Invalid NEXT_PUBLIC_SIGNAL_SERVER_URL:', envUrl);
+    return null;
+  }
+}
+
 /**
  * Resolve PeerJS signaling server config.
  *
@@ -22,19 +35,14 @@ function isSecureScheme(protocol: string): boolean {
 export function getSignalConfig(): SignalConfig | null {
   if (typeof window === 'undefined') return null;
 
-  const envUrl = process.env.NEXT_PUBLIC_SIGNAL_SERVER_URL;
-  if (envUrl) {
-    try {
-      const url = new URL(envUrl);
-      return {
-        host: url.hostname,
-        ...(url.port ? { port: parseInt(url.port, 10) } : {}),
-        path: '/',
-        secure: isSecureScheme(url.protocol),
-      };
-    } catch {
-      console.warn('Invalid NEXT_PUBLIC_SIGNAL_SERVER_URL:', envUrl);
-    }
+  const url = parseSignalEnvUrl();
+  if (url) {
+    return {
+      host: url.hostname,
+      ...(url.port ? { port: parseInt(url.port, 10) } : {}),
+      path: '/',
+      secure: isSecureScheme(url.protocol),
+    };
   }
 
   // Auto-detect: same hostname, port 9000
@@ -57,16 +65,11 @@ export function getSignalConfig(): SignalConfig | null {
 export function getWsRelayUrl(): string {
   if (typeof window === 'undefined') return '';
 
-  const envUrl = process.env.NEXT_PUBLIC_SIGNAL_SERVER_URL;
-  if (envUrl) {
-    try {
-      const url = new URL(envUrl);
-      const wsProto = isSecureScheme(url.protocol) ? 'wss:' : 'ws:';
-      const port = url.port ? `:${url.port}` : '';
-      return `${wsProto}//${url.hostname}${port}/ws`;
-    } catch {
-      console.warn('Invalid NEXT_PUBLIC_SIGNAL_SERVER_URL:', envUrl);
-    }
+  const url = parseSignalEnvUrl();
+  if (url) {
+    const wsProto = isSecureScheme(url.protocol) ? 'wss:' : 'ws:';
+    const port = url.port ? `:${url.port}` : '';
+    return `${wsProto}//${url.hostname}${port}/ws`;
   }
 
   // Auto-detect: same hostname, port 9000

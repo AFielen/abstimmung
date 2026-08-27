@@ -1,6 +1,6 @@
 'use client';
-import { useRef, useState, useCallback, useEffect } from 'react';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getWsRelayUrl } from '@/lib/signal-config';
 
 interface ServerHostTransportCallbacks {
@@ -14,8 +14,11 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
-  const connDeviceMapRef = useRef<Map<string, string>>(new Map());
   const voterConnectionsRef = useRef<Set<string>>(new Set());
+  // connectionId -> deviceId: the relay assigns a NEW conn-N on every (re)join,
+  // so disconnect tracking must key on the stable deviceId (like the P2P hook)
+  // or a reconnecting voter would stay in the disconnected count for 60s.
+  const connDeviceMapRef = useRef<Map<string, string>>(new Map());
   const disconnectedVotersRef = useRef<Map<string, { disconnectedAt: number }>>(new Map());
   const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -103,17 +106,21 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
             callbacksRef.current.onConnection?.(msg.connectionId);
             break;
 
-          case 'voter-disconnected':
+          case 'voter-disconnected': {
             voterConnectionsRef.current.delete(msg.connectionId);
-            disconnectedVotersRef.current.set(msg.connectionId, {
+            const devId = connDeviceMapRef.current.get(msg.connectionId);
+            connDeviceMapRef.current.delete(msg.connectionId);
+            // Fall back to the connectionId for voters that never registered
+            disconnectedVotersRef.current.set(devId ?? msg.connectionId, {
               disconnectedAt: Date.now(),
             });
             updateCounts();
             callbacksRef.current.onDisconnect?.(msg.connectionId);
             break;
+          }
 
           case 'voter-data': {
-            if (typeof msg.data !== 'object' || !msg.data || !('type' in msg.data)) break;
+            if (!hasMessageType(msg.data)) break;
             const voterMsg = msg.data as VoterMessage;
 
             // Handle ping internally
@@ -122,13 +129,12 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
               break;
             }
 
-            // Handle register: track device mapping
+            // Handle register: treat as (re)connection of the voter and clear
+            // any stale disconnected entry for this device
             if (voterMsg.type === 'register') {
               if (voterMsg.deviceId) {
                 connDeviceMapRef.current.set(msg.connectionId, voterMsg.deviceId);
-              }
-              if (voterMsg.fingerprintId) {
-                connDeviceMapRef.current.set(msg.connectionId + ':fp', voterMsg.fingerprintId);
+                disconnectedVotersRef.current.delete(voterMsg.deviceId);
               }
               updateCounts();
               callbacksRef.current.onConnection?.(msg.connectionId);
@@ -163,8 +169,6 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
     }
   }, []);
 
-  const getConnDeviceMap = useCallback(() => connDeviceMapRef.current, []);
-
   const destroy = useCallback(() => {
     if (cleanupIntervalRef.current) {
       clearInterval(cleanupIntervalRef.current);
@@ -186,14 +190,17 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
     return () => { destroy(); };
   }, [destroy]);
 
-  return {
-    init,
-    broadcast,
-    sendTo,
-    getConnDeviceMap,
-    destroy,
-    peerId,
-    connectionCount,
-    disconnectedCount,
-  };
+  // Stable object identity so consumers can use the transport in dependency arrays
+  return useMemo(
+    () => ({
+      init,
+      broadcast,
+      sendTo,
+      destroy,
+      peerId,
+      connectionCount,
+      disconnectedCount,
+    }),
+    [init, broadcast, sendTo, destroy, peerId, connectionCount, disconnectedCount],
+  );
 }

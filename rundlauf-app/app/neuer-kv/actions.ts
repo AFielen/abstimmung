@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { bodies, memberships, organizations, tenants } from "@/lib/db/schema";
 import { sendSuperadminNewTenantNotice } from "@/lib/mail/templates";
 import { slugify } from "@/lib/slug";
+import { invalidInput } from "@/lib/action-helpers";
 
 const schema = z.object({
   name: z
@@ -38,9 +39,7 @@ export async function createTenant(
   const rawSlug = String(formData.get("slug") ?? "").trim() || slugify(rawName);
 
   const parsed = schema.safeParse({ name: rawName, slug: rawSlug });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
   const slugTaken = await db
     .select({ id: tenants.id })

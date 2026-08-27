@@ -6,24 +6,11 @@ import {
   computeAgendaItemResult,
   type ResolutionResult,
 } from "@/lib/resolution";
+import { statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { ResolutionStatus } from "./_components/resolution-status";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Entwurf",
-  laufend: "Laufend",
-  abgeschlossen: "Abgeschlossen",
-  zurueckgezogen: "Zurückgezogen",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  draft: "drk-badge-warning",
-  laufend: "drk-badge-success",
-  abgeschlossen: "drk-badge-error",
-  zurueckgezogen: "drk-badge-warning",
-};
 
 type TopResult = {
   topId: string;
@@ -45,9 +32,9 @@ type ListItem = {
 
 async function loadResolutions(
   where: ReturnType<typeof and>,
-  opts: { withResults: boolean } = { withResults: false },
+  opts: { withResults?: boolean; limit?: number } = {},
 ): Promise<ListItem[]> {
-  const rows = await db
+  const baseQuery = db
     .select({
       id: resolutions.id,
       betreff: resolutions.betreff,
@@ -59,6 +46,7 @@ async function loadResolutions(
     .from(resolutions)
     .where(where)
     .orderBy(desc(resolutions.createdAt));
+  const rows = opts.limit !== undefined ? await baseQuery.limit(opts.limit) : await baseQuery;
 
   if (rows.length === 0) return [];
 
@@ -153,24 +141,25 @@ export default async function TenantDashboard({
   const { kv } = await params;
   const ctx = await requireTenantContext(kv);
 
-  const running = await loadResolutions(
-    and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
-    { withResults: true },
-  );
-  const drafts = ctx.isAdmin
-    ? await loadResolutions(
-        and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "draft")),
-      )
-    : [];
-  const closed = (
-    await loadResolutions(
+  const [running, drafts, closed] = await Promise.all([
+    loadResolutions(
+      and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
+      { withResults: true },
+    ),
+    ctx.isAdmin
+      ? loadResolutions(
+          and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "draft")),
+        )
+      : Promise.resolve([]),
+    loadResolutions(
       and(
         eq(resolutions.tenantId, ctx.tenant.id),
         ne(resolutions.status, "laufend"),
         ne(resolutions.status, "draft"),
       ),
-    )
-  ).slice(0, 20);
+      { limit: 20 },
+    ),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,8 +238,8 @@ function ResolutionList({
                   {new Date(r.fristEnde).toLocaleString("de-DE")}
                 </div>
               </div>
-              <span className={STATUS_BADGE[r.status] ?? "drk-badge-warning"}>
-                {STATUS_LABEL[r.status] ?? r.status}
+              <span className={statusBadgeClass(r.status)}>
+                {statusLabel(r.status)}
               </span>
             </Link>
             {showResults && r.topResults.length > 0 ? (

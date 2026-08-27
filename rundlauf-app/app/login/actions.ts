@@ -6,6 +6,7 @@ import { createMagicToken } from "@/lib/auth/magic";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { sendLoginLink, sendRegisterLink } from "@/lib/mail/templates";
+import { invalidInput } from "@/lib/action-helpers";
 
 const schema = z.object({
   email: z.string().email("Bitte gültige E-Mail-Adresse eingeben").transform((v) => v.trim().toLowerCase()),
@@ -22,9 +23,7 @@ export async function requestMagicLink(
   formData: FormData,
 ): Promise<LoginActionState> {
   const parsed = schema.safeParse({ email: formData.get("email") });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
   const email = parsed.data.email;
 
   const existing = await db

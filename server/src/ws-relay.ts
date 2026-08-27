@@ -55,6 +55,13 @@ const MAX_CONNECTIONS_PER_IP = parseMaxConnectionsPerIp(process.env.WS_MAX_CONNE
 // Rate-limit per WS connection (sliding 1-second window).
 const MAX_MESSAGES_PER_SECOND = 20;
 
+// The host answers up to one pong per voter per heartbeat interval; after a
+// mass (re)connect all voters may ping within the same second, so the host
+// ceiling must cover a full room plus timer ticks and control messages.
+export function maxMessagesPerSecond(role: 'host' | 'voter' | null): number {
+  return role === 'host' ? MAX_MESSAGES_PER_SECOND + MAX_VOTERS_PER_ROOM : MAX_MESSAGES_PER_SECOND;
+}
+
 // Bounds for the application payload inside `host-msg` / `host-msg-to` / `voter-msg`.
 // The wrapper itself is already capped by `maxPayload` (64 KB) on the ws server.
 const MAX_DATA_STRING_LENGTH = 1024;
@@ -153,6 +160,12 @@ export class WebSocketRelay {
     let windowStart = Date.now();
     let windowCount = 0;
 
+    // Separate window for broadcasts. The host budget above is widened to cover
+    // one pong per voter, but those are targeted `host-msg-to`. A `host-msg`
+    // fans out to the whole room, so it keeps the strict base budget.
+    let bcastWindowStart = Date.now();
+    let bcastWindowCount = 0;
+
     ws.on('error', (err) => {
       console.error('[WS Relay] WebSocket error:', err.message);
     });
@@ -164,7 +177,7 @@ export class WebSocketRelay {
         windowCount = 0;
       }
       windowCount++;
-      if (windowCount > MAX_MESSAGES_PER_SECOND) {
+      if (windowCount > maxMessagesPerSecond(member?.role ?? null)) {
         console.warn(`[WS Relay] Rate limit exceeded for ${ip}, closing connection`);
         this.send(ws, { type: 'error', message: 'Rate limit exceeded' });
         ws.close();
@@ -239,13 +252,26 @@ export class WebSocketRelay {
 
         case 'host-msg': {
           if (!room || !member || member.role !== 'host') return;
+          // `now` is wall clock: a backwards NTP step would otherwise freeze the
+          // window and drop every later broadcast silently.
+          if (now - bcastWindowStart >= 1000 || now < bcastWindowStart) {
+            bcastWindowStart = now;
+            bcastWindowCount = 0;
+          }
+          // Drop the broadcast rather than closing the socket: closing the host
+          // deletes the room and ends the session for every voter.
+          if (++bcastWindowCount > MAX_MESSAGES_PER_SECOND) {
+            console.warn(`[WS Relay] Broadcast rate limit exceeded for ${ip}, dropping broadcast`);
+            return;
+          }
           if (!validateDataPayload(msg.data)) {
             this.send(ws, { type: 'error', message: 'Invalid data payload' });
             return;
           }
           room.lastActivity = Date.now();
+          const raw = JSON.stringify({ type: 'host-data', data: msg.data } satisfies ServerOutbound);
           room.voters.forEach((voter) => {
-            this.send(voter.ws, { type: 'host-data', data: msg.data });
+            this.sendRaw(voter.ws, raw);
           });
           break;
         }
@@ -295,8 +321,9 @@ export class WebSocketRelay {
       if (!room || !member) return;
       if (member.role === 'host') {
         console.log(`[WS Relay] Host disconnected, closing room ${room.id}`);
+        const raw = JSON.stringify({ type: 'error', message: 'Host disconnected' } satisfies ServerOutbound);
         room.voters.forEach((voter) => {
-          this.send(voter.ws, { type: 'error', message: 'Host disconnected' });
+          this.sendRaw(voter.ws, raw);
           voter.ws.close();
         });
         this.rooms.delete(room.id);
@@ -310,14 +337,19 @@ export class WebSocketRelay {
     });
   }
 
-  private send(ws: WebSocket, msg: ServerOutbound) {
+  // Pre-serialized variant so fan-outs to a whole room stringify only once.
+  private sendRaw(ws: WebSocket, raw: string) {
     if (ws.readyState === WebSocket.OPEN) {
       try {
-        ws.send(JSON.stringify(msg));
+        ws.send(raw);
       } catch (err) {
         console.error('[WS Relay] send error:', (err as Error).message);
       }
     }
+  }
+
+  private send(ws: WebSocket, msg: ServerOutbound) {
+    this.sendRaw(ws, JSON.stringify(msg));
   }
 
   private cleanupStaleRooms() {
@@ -325,21 +357,18 @@ export class WebSocketRelay {
     this.rooms.forEach((room, id) => {
       if (now - room.lastActivity > ROOM_TTL_MS) {
         console.log(`[WS Relay] Cleaning up stale room: ${id}`);
+        const raw = JSON.stringify({ type: 'error', message: 'Room expired' } satisfies ServerOutbound);
         room.voters.forEach((voter) => {
-          this.send(voter.ws, { type: 'error', message: 'Room expired' });
+          this.sendRaw(voter.ws, raw);
           voter.ws.close();
         });
         if (room.host) {
-          this.send(room.host.ws, { type: 'error', message: 'Room expired' });
+          this.sendRaw(room.host.ws, raw);
           room.host.ws.close();
         }
         this.rooms.delete(id);
       }
     });
-  }
-
-  getRoomCount(): number {
-    return this.rooms.size;
   }
 
   shutdown() {

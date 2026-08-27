@@ -1,6 +1,6 @@
 'use client';
-import { useRef, useCallback, useEffect } from 'react';
-import type { HostMessage, VoterMessage } from '@/lib/types';
+import { useRef, useCallback, useEffect, useMemo } from 'react';
+import { hasMessageType, type HostMessage, type VoterMessage } from '@/lib/types';
 import { getWsRelayUrl } from '@/lib/signal-config';
 
 interface ServerVoterTransportCallbacks {
@@ -85,7 +85,7 @@ export function useServerVoterTransport(callbacks: ServerVoterTransportCallbacks
             break;
 
           case 'host-data':
-            if (typeof msg.data === 'object' && msg.data && 'type' in msg.data) {
+            if (hasMessageType(msg.data)) {
               const hostMsg = msg.data as HostMessage;
               if (hostMsg.type === 'pong') return;
               callbacksRef.current.onData?.(hostMsg);
@@ -206,5 +206,9 @@ export function useServerVoterTransport(callbacks: ServerVoterTransportCallbacks
     return () => { destroy(); };
   }, [destroy]);
 
-  return { init, send, markSessionEnded, retryConnect, checkConnection, destroy };
+  // Stable object identity so consumers can use the transport in dependency arrays
+  return useMemo(
+    () => ({ init, send, markSessionEnded, retryConnect, checkConnection, destroy }),
+    [init, send, markSessionEnded, retryConnect, checkConnection, destroy],
+  );
 }

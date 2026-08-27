@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { consumeMagicToken } from "@/lib/auth/magic";
 import { isSuperadminEmail } from "@/lib/auth/current-user";
@@ -58,16 +58,21 @@ export async function GET(
       );
 
     // Beschluss-Einladungs-Mails für laufende Verfahren versenden, in denen
-    // dieser Nutzer als stimmberechtigt geführt ist. Fehler werden geloggt,
-    // brechen die Aktivierung aber nicht ab.
-    try {
-      await sendPendingResolutionInvites({
-        tenantId: consumed.tenantId,
-        userId,
-      });
-    } catch (err) {
-      console.error("[magic] pending invites hook failed", err);
-    }
+    // dieser Nutzer als stimmberechtigt geführt ist. Läuft via after() erst
+    // nach dem Redirect, damit der Login nicht auf den Mail-Versand wartet.
+    // Fehler werden geloggt, brechen die Aktivierung aber nicht ab.
+    const activatedTenantId = consumed.tenantId;
+    const activatedUserId = userId;
+    after(async () => {
+      try {
+        await sendPendingResolutionInvites({
+          tenantId: activatedTenantId,
+          userId: activatedUserId,
+        });
+      } catch (err) {
+        console.error("[magic] pending invites hook failed", err);
+      }
+    });
   }
 
   // Session setzen

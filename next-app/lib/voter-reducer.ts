@@ -2,7 +2,6 @@ import type { VoterState, VoteResult, SessionMode, VoteType } from './types';
 
 export type VoterAction =
   | { type: 'SET_SCREEN'; screen: VoterState['screen'] }
-  | { type: 'SET_MODE'; mode: SessionMode }
   | { type: 'VOTE_STARTED'; topic: string; description: string; voteType: VoteType; options: string[]; voteRoundId: string; timerSeconds: number; mode: SessionMode }
   | { type: 'VOTE_CONFIRMED' }
   | { type: 'ALREADY_VOTED' }
@@ -32,8 +31,6 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
   switch (action.type) {
     case 'SET_SCREEN':
       return { ...state, screen: action.screen };
-    case 'SET_MODE':
-      return { ...state, mode: action.mode };
     case 'WAITING':
       return {
         ...state,
@@ -89,6 +86,8 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
     case 'CONNECTED':
       return { ...state, reconnectAttempt: 0 };
     case 'TIMER_UPDATE':
+      // Unveraendert -> gleicher State, damit React den Re-Render ueberspringt
+      if (state.timerSecondsLeft === action.seconds) return state;
       return { ...state, timerSecondsLeft: action.seconds };
     default:
       return state;
