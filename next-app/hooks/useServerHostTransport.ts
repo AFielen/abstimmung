@@ -15,6 +15,10 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
   callbacksRef.current = callbacks;
 
   const voterConnectionsRef = useRef<Set<string>>(new Set());
+  // connectionId -> deviceId: the relay assigns a NEW conn-N on every (re)join,
+  // so disconnect tracking must key on the stable deviceId (like the P2P hook)
+  // or a reconnecting voter would stay in the disconnected count for 60s.
+  const connDeviceMapRef = useRef<Map<string, string>>(new Map());
   const disconnectedVotersRef = useRef<Map<string, { disconnectedAt: number }>>(new Map());
   const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -102,14 +106,18 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
             callbacksRef.current.onConnection?.(msg.connectionId);
             break;
 
-          case 'voter-disconnected':
+          case 'voter-disconnected': {
             voterConnectionsRef.current.delete(msg.connectionId);
-            disconnectedVotersRef.current.set(msg.connectionId, {
+            const devId = connDeviceMapRef.current.get(msg.connectionId);
+            connDeviceMapRef.current.delete(msg.connectionId);
+            // Fall back to the connectionId for voters that never registered
+            disconnectedVotersRef.current.set(devId ?? msg.connectionId, {
               disconnectedAt: Date.now(),
             });
             updateCounts();
             callbacksRef.current.onDisconnect?.(msg.connectionId);
             break;
+          }
 
           case 'voter-data': {
             if (!hasMessageType(msg.data)) break;
@@ -121,8 +129,13 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
               break;
             }
 
-            // Handle register: treat as (re)connection of the voter
+            // Handle register: treat as (re)connection of the voter and clear
+            // any stale disconnected entry for this device
             if (voterMsg.type === 'register') {
+              if (voterMsg.deviceId) {
+                connDeviceMapRef.current.set(msg.connectionId, voterMsg.deviceId);
+                disconnectedVotersRef.current.delete(voterMsg.deviceId);
+              }
               updateCounts();
               callbacksRef.current.onConnection?.(msg.connectionId);
             }
@@ -166,6 +179,7 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
       wsRef.current = null;
     }
     voterConnectionsRef.current.clear();
+    connDeviceMapRef.current.clear();
     disconnectedVotersRef.current.clear();
     setPeerId(null);
     setConnectionCount(0);
