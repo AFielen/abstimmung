@@ -6,24 +6,11 @@ import {
   computeAgendaItemResult,
   type ResolutionResult,
 } from "@/lib/resolution";
+import { statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { ResolutionStatus } from "./_components/resolution-status";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Entwurf",
-  laufend: "Laufend",
-  abgeschlossen: "Abgeschlossen",
-  zurueckgezogen: "Zurückgezogen",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  draft: "drk-badge-warning",
-  laufend: "drk-badge-success",
-  abgeschlossen: "drk-badge-error",
-  zurueckgezogen: "drk-badge-warning",
-};
 
 type TopResult = {
   topId: string;
@@ -251,8 +238,8 @@ function ResolutionList({
                   {new Date(r.fristEnde).toLocaleString("de-DE")}
                 </div>
               </div>
-              <span className={STATUS_BADGE[r.status] ?? "drk-badge-warning"}>
-                {STATUS_LABEL[r.status] ?? r.status}
+              <span className={statusBadgeClass(r.status)}>
+                {statusLabel(r.status)}
               </span>
             </Link>
             {showResults && r.topResults.length > 0 ? (

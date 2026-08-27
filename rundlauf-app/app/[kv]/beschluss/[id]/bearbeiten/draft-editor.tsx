@@ -13,6 +13,7 @@ import {
   type ActionState,
 } from "./actions";
 import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
+import { formatBytes, mehrheitLabel } from "@/lib/format";
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(
@@ -50,12 +51,6 @@ export type DraftMember = {
   role: string;
   status: "active" | "invited";
 };
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
-}
 
 export function DraftEditor(props: {
   kv: string;
@@ -892,12 +887,4 @@ function Feedback({ state }: { state: ActionState }) {
       {state.message}
     </div>
   );
-}
-
-function mehrheitLabel(m: string) {
-  return {
-    simple: "Einfache Mehrheit",
-    two_thirds: "2/3-Mehrheit",
-    three_quarters: "3/4-Mehrheit",
-  }[m] ?? m;
 }

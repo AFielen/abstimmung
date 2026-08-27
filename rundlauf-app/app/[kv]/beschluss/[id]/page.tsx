@@ -17,6 +17,7 @@ import {
   parseOptions,
   type ResolutionResult,
 } from "@/lib/resolution";
+import { formatBytes, mehrheitLabel, statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
@@ -170,7 +171,7 @@ export default async function ResolutionPage({
       <header className="drk-card">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className={badgeClass(r.status)}>{statusLabel(r.status)}</span>
+            <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
             {bodyInfo ? (
               <div className="text-xs uppercase tracking-wide mt-2" style={{ color: "var(--text-light)" }}>
                 {bodyInfo.organizationName ? `${bodyInfo.organizationName} · ` : ""}
@@ -414,34 +415,3 @@ function AttachmentList({
   );
 }
 
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
-}
-
-function statusLabel(s: string) {
-  return {
-    draft: "Entwurf",
-    laufend: "Laufend",
-    abgeschlossen: "Abgeschlossen",
-    zurueckgezogen: "Zurückgezogen",
-  }[s] ?? s;
-}
-
-function badgeClass(s: string) {
-  return {
-    draft: "drk-badge-warning",
-    laufend: "drk-badge-success",
-    abgeschlossen: "drk-badge-error",
-    zurueckgezogen: "drk-badge-warning",
-  }[s] ?? "drk-badge-warning";
-}
-
-function mehrheitLabel(m: string) {
-  return {
-    simple: "Einfache Mehrheit",
-    two_thirds: "2/3-Mehrheit",
-    three_quarters: "3/4-Mehrheit",
-  }[m] ?? m;
-}
