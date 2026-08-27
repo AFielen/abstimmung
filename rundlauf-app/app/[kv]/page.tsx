@@ -45,9 +45,9 @@ type ListItem = {
 
 async function loadResolutions(
   where: ReturnType<typeof and>,
-  opts: { withResults: boolean } = { withResults: false },
+  opts: { withResults?: boolean; limit?: number } = {},
 ): Promise<ListItem[]> {
-  const rows = await db
+  const baseQuery = db
     .select({
       id: resolutions.id,
       betreff: resolutions.betreff,
@@ -59,6 +59,7 @@ async function loadResolutions(
     .from(resolutions)
     .where(where)
     .orderBy(desc(resolutions.createdAt));
+  const rows = opts.limit !== undefined ? await baseQuery.limit(opts.limit) : await baseQuery;
 
   if (rows.length === 0) return [];
 
@@ -153,24 +154,25 @@ export default async function TenantDashboard({
   const { kv } = await params;
   const ctx = await requireTenantContext(kv);
 
-  const running = await loadResolutions(
-    and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
-    { withResults: true },
-  );
-  const drafts = ctx.isAdmin
-    ? await loadResolutions(
-        and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "draft")),
-      )
-    : [];
-  const closed = (
-    await loadResolutions(
+  const [running, drafts, closed] = await Promise.all([
+    loadResolutions(
+      and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
+      { withResults: true },
+    ),
+    ctx.isAdmin
+      ? loadResolutions(
+          and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "draft")),
+        )
+      : Promise.resolve([]),
+    loadResolutions(
       and(
         eq(resolutions.tenantId, ctx.tenant.id),
         ne(resolutions.status, "laufend"),
         ne(resolutions.status, "draft"),
       ),
-    )
-  ).slice(0, 20);
+      { limit: 20 },
+    ),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
