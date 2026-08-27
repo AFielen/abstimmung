@@ -27,9 +27,13 @@ function build(): DbType {
   return drizzleDb;
 }
 
+// Modul-lokales Singleton: In Produktion (kein globalThis-Cache) darf pro
+// Prozess nur ein Client mit einem Connection-Pool existieren.
+let dbSingleton: DbType | undefined;
+
 function getDb(): DbType {
-  if (globalThis.__rundlaufDb) return globalThis.__rundlaufDb;
-  return build();
+  if (!dbSingleton) dbSingleton = globalThis.__rundlaufDb ?? build();
+  return dbSingleton;
 }
 
 // Proxy, damit Module-Top-Level-Imports nicht sofort eine Verbindung aufbauen
