@@ -213,15 +213,6 @@ export default function PresenterApp() {
   const transport = state.transportMode === 'server' ? serverTransport : p2pTransport;
   transportRef.current = transport;
 
-  // Keep connection counts in sync
-  useEffect(() => {
-    dispatch({
-      type: 'SET_CONNECTIONS',
-      connected: transport.connectionCount,
-      disconnected: transport.disconnectedCount,
-    });
-  }, [transport.connectionCount, transport.disconnectedCount]);
-
   // --- Beforeunload warning ---
   useEffect(() => {
     if (state.phase === 'setup') return;
@@ -424,7 +415,7 @@ export default function PresenterApp() {
 
     // Collect stats before resetting
     const totalVotes = state.history.length;
-    const totalParticipants = state.connectedCount;
+    const totalParticipants = transport.connectionCount;
     const totalCast = state.history.reduce((sum, r) => sum + r.totalCast, 0);
 
     transport.broadcast({ type: 'session-ended' });
@@ -496,9 +487,9 @@ export default function PresenterApp() {
             <div className="text-xs" style={{ color: 'var(--text-light)' }}>
               {modeLabel} |{' '}
               {state.voterCount} Stimmberechtigte |{' '}
-              <span style={{ color: 'var(--success)' }}>{state.connectedCount} verbunden</span>
-              {state.disconnectedCount > 0 && (
-                <span style={{ color: 'var(--warning)' }}> | {state.disconnectedCount} getrennt</span>
+              <span style={{ color: 'var(--success)' }}>{transport.connectionCount} verbunden</span>
+              {transport.disconnectedCount > 0 && (
+                <span style={{ color: 'var(--warning)' }}> | {transport.disconnectedCount} getrennt</span>
               )}
             </div>
           </div>
@@ -532,8 +523,8 @@ export default function PresenterApp() {
           peerId={transport.peerId}
           sessionMode={state.sessionMode}
           transportMode={state.transportMode}
-          connectedCount={state.connectedCount}
-          disconnectedCount={state.disconnectedCount}
+          connectedCount={transport.connectionCount}
+          disconnectedCount={transport.disconnectedCount}
           timerSecondsLeft={state.timerSecondsLeft}
           onCloseVote={closeVote}
           onCancelVote={cancelVote}

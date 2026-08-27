@@ -68,8 +68,6 @@ export interface PresenterState {
   currentVote: VoteData | null;
   history: VoteResult[];
   timerSecondsLeft: number;
-  connectedCount: number;
-  disconnectedCount: number;
   tokenCodes: Record<string, TokenInfo>;
 }
 

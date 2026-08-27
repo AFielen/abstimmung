@@ -17,8 +17,6 @@ export const initialPresenterState: PresenterState = {
   currentVote: null,
   history: [],
   timerSecondsLeft: 0,
-  connectedCount: 0,
-  disconnectedCount: 0,
   tokenCodes: {},
 };
 
@@ -30,7 +28,6 @@ export type PresenterAction =
   | { type: 'CLOSE_VOTE'; result: VoteResult }
   | { type: 'CANCEL_VOTE' }
   | { type: 'TIMER_TICK' }
-  | { type: 'SET_CONNECTIONS'; connected: number; disconnected: number }
   | { type: 'MARK_TOKEN_USED'; code: string; roundId: string }
   | { type: 'NEXT_VOTE' }
   | { type: 'RESET' };
@@ -97,13 +94,6 @@ export function presenterReducer(
       return {
         ...state,
         timerSecondsLeft: Math.max(0, state.timerSecondsLeft - 1),
-      };
-
-    case 'SET_CONNECTIONS':
-      return {
-        ...state,
-        connectedCount: action.connected,
-        disconnectedCount: action.disconnected,
       };
 
     case 'MARK_TOKEN_USED': {
