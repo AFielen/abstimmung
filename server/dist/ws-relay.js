@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketRelay = void 0;
 exports.parseMaxConnectionsPerIp = parseMaxConnectionsPerIp;
+exports.maxMessagesPerSecond = maxMessagesPerSecond;
 exports.validateDataPayload = validateDataPayload;
 const ws_1 = require("ws");
 const ROOM_TTL_MS = 30 * 60 * 1000; // 30 minutes inactivity
@@ -22,6 +23,12 @@ function parseMaxConnectionsPerIp(raw) {
 const MAX_CONNECTIONS_PER_IP = parseMaxConnectionsPerIp(process.env.WS_MAX_CONNECTIONS_PER_IP);
 // Rate-limit per WS connection (sliding 1-second window).
 const MAX_MESSAGES_PER_SECOND = 20;
+// The host answers up to one pong per voter per heartbeat interval; after a
+// mass (re)connect all voters may ping within the same second, so the host
+// ceiling must cover a full room plus timer ticks and control messages.
+function maxMessagesPerSecond(role) {
+    return role === 'host' ? MAX_MESSAGES_PER_SECOND + MAX_VOTERS_PER_ROOM : MAX_MESSAGES_PER_SECOND;
+}
 // Bounds for the application payload inside `host-msg` / `host-msg-to` / `voter-msg`.
 // The wrapper itself is already capped by `maxPayload` (64 KB) on the ws server.
 const MAX_DATA_STRING_LENGTH = 1024;
@@ -126,7 +133,7 @@ class WebSocketRelay {
                 windowCount = 0;
             }
             windowCount++;
-            if (windowCount > MAX_MESSAGES_PER_SECOND) {
+            if (windowCount > maxMessagesPerSecond(member?.role ?? null)) {
                 console.warn(`[WS Relay] Rate limit exceeded for ${ip}, closing connection`);
                 this.send(ws, { type: 'error', message: 'Rate limit exceeded' });
                 ws.close();
@@ -203,8 +210,9 @@ class WebSocketRelay {
                         return;
                     }
                     room.lastActivity = Date.now();
+                    const raw = JSON.stringify({ type: 'host-data', data: msg.data });
                     room.voters.forEach((voter) => {
-                        this.send(voter.ws, { type: 'host-data', data: msg.data });
+                        this.sendRaw(voter.ws, raw);
                     });
                     break;
                 }
@@ -255,8 +263,9 @@ class WebSocketRelay {
                 return;
             if (member.role === 'host') {
                 console.log(`[WS Relay] Host disconnected, closing room ${room.id}`);
+                const raw = JSON.stringify({ type: 'error', message: 'Host disconnected' });
                 room.voters.forEach((voter) => {
-                    this.send(voter.ws, { type: 'error', message: 'Host disconnected' });
+                    this.sendRaw(voter.ws, raw);
                     voter.ws.close();
                 });
                 this.rooms.delete(room.id);
@@ -270,35 +279,37 @@ class WebSocketRelay {
             }
         });
     }
-    send(ws, msg) {
+    // Pre-serialized variant so fan-outs to a whole room stringify only once.
+    sendRaw(ws, raw) {
         if (ws.readyState === ws_1.WebSocket.OPEN) {
             try {
-                ws.send(JSON.stringify(msg));
+                ws.send(raw);
             }
             catch (err) {
                 console.error('[WS Relay] send error:', err.message);
             }
         }
     }
+    send(ws, msg) {
+        this.sendRaw(ws, JSON.stringify(msg));
+    }
     cleanupStaleRooms() {
         const now = Date.now();
         this.rooms.forEach((room, id) => {
             if (now - room.lastActivity > ROOM_TTL_MS) {
                 console.log(`[WS Relay] Cleaning up stale room: ${id}`);
+                const raw = JSON.stringify({ type: 'error', message: 'Room expired' });
                 room.voters.forEach((voter) => {
-                    this.send(voter.ws, { type: 'error', message: 'Room expired' });
+                    this.sendRaw(voter.ws, raw);
                     voter.ws.close();
                 });
                 if (room.host) {
-                    this.send(room.host.ws, { type: 'error', message: 'Room expired' });
+                    this.sendRaw(room.host.ws, raw);
                     room.host.ws.close();
                 }
                 this.rooms.delete(id);
             }
         });
-    }
-    getRoomCount() {
-        return this.rooms.size;
     }
     shutdown() {
         clearInterval(this.cleanupTimer);
