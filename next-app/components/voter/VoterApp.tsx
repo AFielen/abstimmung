@@ -33,6 +33,10 @@ interface VoterAppProps {
 // whose first connect never opens would stay on the connecting screen forever.
 const INITIAL_CONNECT_TIMEOUT_MS = 15000;
 
+// While host timer-update messages arrive (1/s), the local fallback interval
+// stays silent; only after this grace period does it take over the countdown.
+const HOST_TICK_GRACE_MS = 2000;
+
 export default function VoterApp({ presenterPeerId, transportMode }: VoterAppProps) {
   const [state, dispatch] = useReducer(voterReducer, initialVoterState);
 
@@ -42,6 +46,11 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
 
   // Timer interval ref
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Countdown value + timestamp of the last host tick, so the local interval
+  // can act as a pure fallback without restarting on every host message
+  const timerSecondsRef = useRef(0);
+  const lastHostTickRef = useRef(0);
 
   // Stimmkarten mode refs
   const skCurrentCodeRef = useRef<string>('');
@@ -75,13 +84,16 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   const startTimer = useCallback(
     (seconds: number) => {
       stopTimer();
+      timerSecondsRef.current = seconds;
+      lastHostTickRef.current = 0;
       dispatchRef.current({ type: 'TIMER_UPDATE', seconds });
       timerIntervalRef.current = setInterval(() => {
-        dispatchRef.current({
-          type: 'TIMER_UPDATE',
-          seconds: Math.max(0, --seconds),
-        });
-        if (seconds <= 0) {
+        // Host drives the countdown while its ticks keep arriving
+        if (Date.now() - lastHostTickRef.current < HOST_TICK_GRACE_MS) return;
+        const next = Math.max(0, timerSecondsRef.current - 1);
+        timerSecondsRef.current = next;
+        dispatchRef.current({ type: 'TIMER_UPDATE', seconds: next });
+        if (next <= 0) {
           stopTimer();
         }
       }, 1000);
@@ -147,12 +159,11 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
         }
 
         case 'timer-update': {
-          // Sync local timer with host timer
+          // Sync with the host timer; the local interval stays untouched and
+          // only takes over once host ticks stop arriving (see startTimer)
+          timerSecondsRef.current = data.seconds;
+          lastHostTickRef.current = Date.now();
           dispatchRef.current({ type: 'TIMER_UPDATE', seconds: data.seconds });
-          // If we have a running local timer, restart it from the synced value
-          if (data.seconds > 0 && timerIntervalRef.current) {
-            startTimer(data.seconds);
-          }
           break;
         }
 

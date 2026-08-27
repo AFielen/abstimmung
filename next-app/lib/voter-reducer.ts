@@ -89,6 +89,8 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
     case 'CONNECTED':
       return { ...state, reconnectAttempt: 0 };
     case 'TIMER_UPDATE':
+      // Unveraendert -> gleicher State, damit React den Re-Render ueberspringt
+      if (state.timerSecondsLeft === action.seconds) return state;
       return { ...state, timerSecondsLeft: action.seconds };
     default:
       return state;
