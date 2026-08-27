@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { attachments, eligibleVoters, resolutions } from "@/lib/db/schema";
 import { requireTenantContext } from "@/lib/tenant";
+import { belongsToTenant } from "@/lib/action-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET(
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, id)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(r, ctx.tenant.id)) {
     return new NextResponse("Beschluss nicht gefunden", { status: 404 });
   }
 

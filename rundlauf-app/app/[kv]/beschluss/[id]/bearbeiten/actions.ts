@@ -17,6 +17,7 @@ import {
 import { sendResolutionInvite } from "@/lib/mail/templates";
 import { DEFAULT_OPTIONS, MIN_FRIST_DAYS, partitionInviteResults } from "@/lib/resolution";
 import { requireAdmin } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 export type ActionState = { ok: boolean; message?: string };
 
@@ -32,7 +33,7 @@ async function loadDraft(kv: string, resolutionId: string): Promise<LoadDraftRes
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, resolutionId)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(r, ctx.tenant.id)) {
     return { ok: false, message: "Beschluss nicht gefunden" };
   }
   if (r.status !== "draft") {
@@ -63,7 +64,7 @@ export async function updateResolutionMeta(
     fristEnde: formData.get("fristEnde"),
     voteChangeMode: formData.get("voteChangeMode"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -117,9 +118,7 @@ export async function addAgendaItem(
     quorumPct: formData.get("quorumPct") ?? 75,
     mehrheit: formData.get("mehrheit"),
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -185,9 +184,7 @@ export async function updateAgendaItem(
     quorumPct: formData.get("quorumPct") ?? 75,
     mehrheit: formData.get("mehrheit"),
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -250,7 +247,7 @@ export async function deleteAgendaItem(
     resolutionId: formData.get("resolutionId"),
     agendaItemId: formData.get("agendaItemId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -318,7 +315,7 @@ export async function deleteAttachment(
     resolutionId: formData.get("resolutionId"),
     attachmentId: formData.get("attachmentId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -372,9 +369,7 @@ export async function publishResolution(
     resolutionId: formData.get("resolutionId"),
     eligibleUserIds,
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
@@ -537,7 +532,7 @@ export async function discardDraft(
     kv: formData.get("kv"),
     resolutionId: formData.get("resolutionId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;

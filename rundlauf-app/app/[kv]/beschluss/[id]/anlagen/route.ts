@@ -18,6 +18,7 @@ import {
   ATTACHMENT_MAX_COUNT,
 } from "@/lib/resolution";
 import { requireAdmin } from "@/lib/tenant";
+import { belongsToTenant } from "@/lib/action-helpers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -36,7 +37,7 @@ export async function POST(
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, id)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(r, ctx.tenant.id)) {
     return json({ ok: false, message: "Beschluss nicht gefunden" }, 404);
   }
   if (r.status !== "draft") {
@@ -154,7 +155,7 @@ export async function GET(
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, id)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(r, ctx.tenant.id)) {
     return json({ ok: false, message: "Beschluss nicht gefunden" }, 404);
   }
 

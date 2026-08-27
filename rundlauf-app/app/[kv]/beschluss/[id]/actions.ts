@@ -16,6 +16,7 @@ import {
 import { finalizeResolution } from "@/lib/finalize";
 import { isPastDeadline, parseOptions } from "@/lib/resolution";
 import { requireAdmin, requireTenantContext } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 const voteSchema = z.object({
   kv: z.string().min(1),
@@ -51,14 +52,14 @@ export async function submitVote(
     agendaItemId: formData.get("agendaItemId"),
     optionId: formData.get("optionId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireTenantContext(parsed.data.kv);
 
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, parsed.data.resolutionId)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(r, ctx.tenant.id)) {
     return { ok: false, message: "Beschluss nicht gefunden" };
   }
   if (r.status !== "laufend") {
@@ -171,13 +172,13 @@ export async function closeResolution(
     kv: formData.get("kv"),
     resolutionId: formData.get("resolutionId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
 
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, parsed.data.resolutionId)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) return { ok: false, message: "Beschluss nicht gefunden" };
+  if (!belongsToTenant(r, ctx.tenant.id)) return { ok: false, message: "Beschluss nicht gefunden" };
   if (r.status !== "laufend") return { ok: false, message: "Beschluss ist nicht laufend" };
 
   await finalizeResolution(r.id);
@@ -201,12 +202,12 @@ export async function withdrawResolution(
     kv: formData.get("kv"),
     resolutionId: formData.get("resolutionId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
   const ctx = await requireAdmin(parsed.data.kv);
   const r = (
     await db.select().from(resolutions).where(eq(resolutions.id, parsed.data.resolutionId)).limit(1)
   )[0];
-  if (!r || r.tenantId !== ctx.tenant.id) return { ok: false, message: "Beschluss nicht gefunden" };
+  if (!belongsToTenant(r, ctx.tenant.id)) return { ok: false, message: "Beschluss nicht gefunden" };
   if (r.status !== "laufend") return { ok: false, message: "Beschluss ist nicht laufend" };
 
   await db

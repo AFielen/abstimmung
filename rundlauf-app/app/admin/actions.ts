@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { memberships, tenants, users } from "@/lib/db/schema";
 import { sendTenantApproved, sendTenantRejected } from "@/lib/mail/templates";
+import { invalidInput } from "@/lib/action-helpers";
 
 const approveSchema = z.object({ tenantId: z.string().uuid() });
 const rejectSchema = z.object({
@@ -23,7 +24,7 @@ export async function approveTenant(
 ): Promise<ModerationState> {
   const admin = await requireSuperadmin();
   const parsed = approveSchema.safeParse({ tenantId: formData.get("tenantId") });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const tenantRow = (
     await db.select().from(tenants).where(eq(tenants.id, parsed.data.tenantId)).limit(1)

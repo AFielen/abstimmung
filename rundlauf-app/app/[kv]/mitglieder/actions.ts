@@ -10,6 +10,7 @@ import { memberships, users } from "@/lib/db/schema";
 import { parseMembersFile } from "@/lib/import/parse-members";
 import { sendInviteLink } from "@/lib/mail/templates";
 import { requireAdmin, type TenantContext } from "@/lib/tenant";
+import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 // ─── Shared helper ────────────────────────────────────────────────────────
 
@@ -122,9 +123,7 @@ export async function inviteMember(
     role: formData.get("role"),
     name: formData.get("name") || undefined,
   });
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Ungültige Eingabe" };
-  }
+  if (!parsed.success) return invalidInput(parsed.error);
   const ctx = await requireAdmin(parsed.data.kv);
 
   const outcome = await inviteUserToTenant({
@@ -164,7 +163,7 @@ export async function removeMember(
     kv: formData.get("kv"),
     membershipId: formData.get("membershipId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
   const m = (
@@ -174,7 +173,7 @@ export async function removeMember(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -213,7 +212,7 @@ export async function changeRole(
     membershipId: formData.get("membershipId"),
     role: formData.get("role"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
   const m = (
@@ -223,7 +222,7 @@ export async function changeRole(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -489,7 +488,7 @@ export async function resendInvite(
     kv: formData.get("kv"),
     membershipId: formData.get("membershipId"),
   });
-  if (!parsed.success) return { ok: false, message: "Ungültige Eingabe" };
+  if (!parsed.success) return invalidInput();
 
   const ctx = await requireAdmin(parsed.data.kv);
 
@@ -500,7 +499,7 @@ export async function resendInvite(
       .where(eq(memberships.id, parsed.data.membershipId))
       .limit(1)
   )[0];
-  if (!m || m.tenantId !== ctx.tenant.id) {
+  if (!belongsToTenant(m, ctx.tenant.id)) {
     return { ok: false, message: "Mitglied nicht gefunden" };
   }
   if (m.role === "owner") {
@@ -533,7 +532,7 @@ export async function resendAllPendingInvites(
 ): Promise<InviteState> {
   const kv = formData.get("kv");
   if (typeof kv !== "string" || kv.length === 0) {
-    return { ok: false, message: "Ungültige Eingabe" };
+    return invalidInput();
   }
   const ctx = await requireAdmin(kv);
 
