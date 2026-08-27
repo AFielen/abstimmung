@@ -105,6 +105,7 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     return new Promise((resolve, reject) => {
       let peerIdRetries = 0;
       const maxPeerIdRetries = 3;
+      let settled = false;
 
       function createPeer() {
         const id = 'drk-' + Math.random().toString(36).substring(2, 18);
@@ -118,7 +119,9 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
         peerRef.current = peer;
 
         peer.on('open', (openId: string) => {
-          // Start periodic cleanup of disconnected peers (remove after 60s)
+          // Start periodic cleanup of disconnected peers (remove after 60s);
+          // clear any interval left over from a previous init first
+          if (cleanupIntervalRef.current) clearInterval(cleanupIntervalRef.current);
           cleanupIntervalRef.current = setInterval(() => {
             const now = Date.now();
             disconnectedPeersRef.current.forEach((info, devId) => {
@@ -130,6 +133,7 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
             });
           }, 15000);
 
+          settled = true;
           setPeerId(openId);
           resolve(openId);
         });
@@ -139,10 +143,10 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
         });
 
         peer.on('error', (err: { type?: string }) => {
-          if (cleanupIntervalRef.current) {
-            clearInterval(cleanupIntervalRef.current);
-            cleanupIntervalRef.current = null;
-          }
+          // After successful init, PeerJS also emits non-fatal errors (e.g.
+          // peer-unavailable); those must not tear down the live transport
+          // or its cleanup interval.
+          if (settled) return;
           if (err.type === 'unavailable-id') {
             peerIdRetries++;
             if (peerIdRetries <= maxPeerIdRetries) {

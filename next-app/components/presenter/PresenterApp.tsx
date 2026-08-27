@@ -232,6 +232,14 @@ export default function PresenterApp() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [state.phase]);
 
+  // Stop a running vote timer on unmount (e.g. navigation away mid-vote);
+  // uses the ref directly since stopTimer is a plain function
+  useEffect(() => {
+    return () => {
+      if (timerInterval.current) clearInterval(timerInterval.current);
+    };
+  }, []);
+
   // --- Timer management ---
   function startTimer() {
     stopTimer();
