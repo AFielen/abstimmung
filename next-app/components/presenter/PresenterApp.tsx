@@ -277,7 +277,6 @@ export default function PresenterApp() {
     mode: SessionMode,
     transportMode: TransportMode,
     tokenCodes: Record<string, TokenInfo>,
-    generatedCodes: string[],
   ) {
     dispatch({
       type: 'START_SESSION',
@@ -286,7 +285,6 @@ export default function PresenterApp() {
       mode,
       transportMode,
       tokenCodes,
-      generatedCodes,
     });
 
     try {
@@ -521,7 +519,7 @@ export default function PresenterApp() {
       {/* Ready phase */}
       {state.phase === 'ready' && (
         <>
-          <InfoBox sessionMode={state.sessionMode} transportMode={state.transportMode} context="vote" />
+          <InfoBox sessionMode={state.sessionMode} transportMode={state.transportMode} />
           <NewVoteForm onStartVote={handleStartVote} />
         </>
       )}

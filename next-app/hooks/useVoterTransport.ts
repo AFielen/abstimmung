@@ -225,7 +225,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
 
     const peer = await createPeerInstance();
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       peerRef.current = peer;
 
       peer.on('open', () => {
@@ -243,7 +243,7 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
         });
       });
 
-      peer.on('error', (err: { type?: string }) => {
+      peer.on('error', () => {
         if (sessionEndedRef.current) return;
         if (!isReconnectingRef.current) startReconnectRef.current();
       });

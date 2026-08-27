@@ -14,7 +14,6 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
-  const connDeviceMapRef = useRef<Map<string, string>>(new Map());
   const voterConnectionsRef = useRef<Set<string>>(new Set());
   const disconnectedVotersRef = useRef<Map<string, { disconnectedAt: number }>>(new Map());
   const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -122,14 +121,8 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
               break;
             }
 
-            // Handle register: track device mapping
+            // Handle register: treat as (re)connection of the voter
             if (voterMsg.type === 'register') {
-              if (voterMsg.deviceId) {
-                connDeviceMapRef.current.set(msg.connectionId, voterMsg.deviceId);
-              }
-              if (voterMsg.fingerprintId) {
-                connDeviceMapRef.current.set(msg.connectionId + ':fp', voterMsg.fingerprintId);
-              }
               updateCounts();
               callbacksRef.current.onConnection?.(msg.connectionId);
             }
@@ -163,8 +156,6 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
     }
   }, []);
 
-  const getConnDeviceMap = useCallback(() => connDeviceMapRef.current, []);
-
   const destroy = useCallback(() => {
     if (cleanupIntervalRef.current) {
       clearInterval(cleanupIntervalRef.current);
@@ -175,7 +166,6 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
       wsRef.current = null;
     }
     voterConnectionsRef.current.clear();
-    connDeviceMapRef.current.clear();
     disconnectedVotersRef.current.clear();
     setPeerId(null);
     setConnectionCount(0);
@@ -190,7 +180,6 @@ export function useServerHostTransport(callbacks: ServerHostTransportCallbacks) 
     init,
     broadcast,
     sendTo,
-    getConnDeviceMap,
     destroy,
     peerId,
     connectionCount,

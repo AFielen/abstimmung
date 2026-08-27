@@ -11,7 +11,6 @@ interface SetupFormProps {
     mode: SessionMode,
     transportMode: TransportMode,
     tokenCodes: Record<string, TokenInfo>,
-    generatedCodes: string[],
   ) => void;
 }
 
@@ -82,7 +81,7 @@ export default function SetupForm({ onStartSession }: SetupFormProps) {
       });
     }
 
-    onStartSession(title.trim(), voterCount, mode, transportMode, tokenCodes, generatedCodes);
+    onStartSession(title.trim(), voterCount, mode, transportMode, tokenCodes);
   }
 
   // Active selection state helpers

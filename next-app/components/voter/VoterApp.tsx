@@ -1,7 +1,6 @@
 'use client';
 import { useReducer, useEffect, useRef, useCallback } from 'react';
 import { voterReducer, initialVoterState } from '@/lib/voter-reducer';
-import type { VoterAction } from '@/lib/voter-reducer';
 import type { HostMessage, VoteType, TransportMode } from '@/lib/types';
 import { useVoterTransport } from '@/hooks/useVoterTransport';
 import { useServerVoterTransport } from '@/hooks/useServerVoterTransport';
@@ -56,10 +55,6 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   const skCurrentCodeRef = useRef<string>('');
   const skVoteDataRef = useRef<{ options: string[]; voteType: VoteType; topic: string } | null>(null);
 
-  // Keep dispatch accessible via ref for transport callbacks
-  const dispatchRef = useRef<React.Dispatch<VoterAction>>(dispatch);
-  dispatchRef.current = dispatch;
-
   // Track the current round ID in a ref for use inside callbacks
   const currentRoundIdRef = useRef<string | null>(null);
   currentRoundIdRef.current = state.currentRoundId;
@@ -86,13 +81,13 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
       stopTimer();
       timerSecondsRef.current = seconds;
       lastHostTickRef.current = 0;
-      dispatchRef.current({ type: 'TIMER_UPDATE', seconds });
+      dispatch({ type: 'TIMER_UPDATE', seconds });
       timerIntervalRef.current = setInterval(() => {
         // Host drives the countdown while its ticks keep arriving
         if (Date.now() - lastHostTickRef.current < HOST_TICK_GRACE_MS) return;
         const next = Math.max(0, timerSecondsRef.current - 1);
         timerSecondsRef.current = next;
-        dispatchRef.current({ type: 'TIMER_UPDATE', seconds: next });
+        dispatch({ type: 'TIMER_UPDATE', seconds: next });
         if (next <= 0) {
           stopTimer();
         }
@@ -108,13 +103,13 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
       switch (data.type) {
         case 'waiting': {
           stopTimer();
-          dispatchRef.current({ type: 'WAITING', mode: data.mode });
+          dispatch({ type: 'WAITING', mode: data.mode });
           break;
         }
 
         case 'vote-started': {
           const alreadyVoted = hasVotedInRound(data.voteRoundId);
-          dispatchRef.current({
+          dispatch({
             type: 'VOTE_STARTED',
             topic: data.topic,
             description: data.description,
@@ -125,7 +120,7 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
             mode: data.mode,
           });
           if (alreadyVoted) {
-            dispatchRef.current({ type: 'MARK_VOTED' });
+            dispatch({ type: 'MARK_VOTED' });
           }
           if (data.timerSeconds > 0) {
             startTimer(data.timerSeconds);
@@ -136,25 +131,25 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
         case 'vote-confirmed': {
           if (currentRoundIdRef.current) markVoted(currentRoundIdRef.current);
           stopTimer();
-          dispatchRef.current({ type: 'VOTE_CONFIRMED' });
+          dispatch({ type: 'VOTE_CONFIRMED' });
           break;
         }
 
         case 'already-voted': {
           if (currentRoundIdRef.current) markVoted(currentRoundIdRef.current);
-          dispatchRef.current({ type: 'ALREADY_VOTED' });
+          dispatch({ type: 'ALREADY_VOTED' });
           break;
         }
 
         case 'vote-closed': {
           stopTimer();
-          dispatchRef.current({ type: 'VOTE_CLOSED', result: data.result });
+          dispatch({ type: 'VOTE_CLOSED', result: data.result });
           break;
         }
 
         case 'vote-cancelled': {
           stopTimer();
-          dispatchRef.current({ type: 'VOTE_CANCELLED' });
+          dispatch({ type: 'VOTE_CANCELLED' });
           break;
         }
 
@@ -163,14 +158,14 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
           // only takes over once host ticks stop arriving (see startTimer)
           timerSecondsRef.current = data.seconds;
           lastHostTickRef.current = Date.now();
-          dispatchRef.current({ type: 'TIMER_UPDATE', seconds: data.seconds });
+          dispatch({ type: 'TIMER_UPDATE', seconds: data.seconds });
           break;
         }
 
         case 'session-ended': {
           stopTimer();
           transportRef.current.markSessionEnded();
-          dispatchRef.current({ type: 'SESSION_ENDED' });
+          dispatch({ type: 'SESSION_ENDED' });
           // Redirect voter to danke page
           window.location.href = '/danke';
           break;
@@ -184,10 +179,10 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
               voteType: data.voteType,
               topic: data.topic,
             };
-            dispatchRef.current({ type: 'SET_SCREEN', screen: 'sk-vote' });
+            dispatch({ type: 'SET_SCREEN', screen: 'sk-vote' });
           } else {
             // Code invalid — stay on code entry, user will see error from SkCodeEntryScreen
-            dispatchRef.current({ type: 'SET_SCREEN', screen: 'sk-code' });
+            dispatch({ type: 'SET_SCREEN', screen: 'sk-code' });
           }
           break;
         }
@@ -196,12 +191,12 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
           if (data.success) {
             skCurrentCodeRef.current = '';
             skVoteDataRef.current = null;
-            dispatchRef.current({ type: 'SET_SCREEN', screen: 'sk-confirmed' });
+            dispatch({ type: 'SET_SCREEN', screen: 'sk-confirmed' });
           } else {
             // Vote failed (e.g., code already used) — go back to code entry
             skCurrentCodeRef.current = '';
             skVoteDataRef.current = null;
-            dispatchRef.current({ type: 'SET_SCREEN', screen: 'sk-code' });
+            dispatch({ type: 'SET_SCREEN', screen: 'sk-code' });
           }
           break;
         }
@@ -215,7 +210,7 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
 
   const handleConnected = useCallback(() => {
     hasConnectedRef.current = true;
-    dispatchRef.current({ type: 'CONNECTED' });
+    dispatch({ type: 'CONNECTED' });
     // Register with the presenter
     transportRef.current.send({
       type: 'register',
@@ -225,11 +220,11 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   }, []);
 
   const handleReconnecting = useCallback((attempt: number, max: number) => {
-    dispatchRef.current({ type: 'RECONNECTING', attempt, max });
+    dispatch({ type: 'RECONNECTING', attempt, max });
   }, []);
 
   const handleReconnectFailed = useCallback(() => {
-    dispatchRef.current({ type: 'RECONNECT_FAILED' });
+    dispatch({ type: 'RECONNECT_FAILED' });
   }, []);
 
   // --- Both transports always instantiated (React Rules of Hooks) ---

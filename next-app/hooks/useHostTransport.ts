@@ -17,7 +17,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
   const connDeviceMapRef = useRef<Map<string, string>>(new Map());
   const disconnectedPeersRef = useRef<Map<string, { disconnectedAt: number }>>(new Map());
   const deviceIdToPeerRef = useRef<Map<string, string>>(new Map());
-  const connLastSeenRef = useRef<Map<string, number>>(new Map());
   const cleanupIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Keep callbacks in a ref so event handlers always see the latest version
@@ -39,7 +38,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
   const setupConnection = useCallback((conn: DataConnection) => {
     conn.on('open', () => {
       connectionsRef.current.set(conn.peer, conn);
-      connLastSeenRef.current.set(conn.peer, Date.now());
       updateCounts();
       callbacksRef.current.onConnection?.(conn.peer);
     });
@@ -47,7 +45,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     conn.on('data', (rawData: unknown) => {
       if (typeof rawData !== 'object' || !rawData || !('type' in rawData)) return;
       const data = rawData as VoterMessage;
-      connLastSeenRef.current.set(conn.peer, Date.now());
 
       // Heartbeat: respond to ping immediately
       if (data.type === 'ping') {
@@ -65,13 +62,9 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
           const oldPeer = deviceIdToPeerRef.current.get(devId);
           if (oldPeer && oldPeer !== conn.peer) {
             connectionsRef.current.delete(oldPeer);
-            connLastSeenRef.current.delete(oldPeer);
           }
           deviceIdToPeerRef.current.set(devId, conn.peer);
           disconnectedPeersRef.current.delete(devId);
-        }
-        if (data.fingerprintId) {
-          connDeviceMapRef.current.set(conn.peer + ':fp', data.fingerprintId);
         }
         updateCounts();
         callbacksRef.current.onConnection?.(conn.peer);
@@ -82,7 +75,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
 
     conn.on('close', () => {
       connectionsRef.current.delete(conn.peer);
-      connLastSeenRef.current.delete(conn.peer);
       const devId = connDeviceMapRef.current.get(conn.peer);
       if (devId) {
         disconnectedPeersRef.current.set(devId, { disconnectedAt: Date.now() });
@@ -185,11 +177,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
   }, []);
 
   /**
-   * Get the device mapping (peer ID -> device ID, peer ID + ':fp' -> fingerprint ID).
-   */
-  const getConnDeviceMap = useCallback(() => connDeviceMapRef.current, []);
-
-  /**
    * Destroy the peer, clear all intervals, and reset all state.
    */
   const destroy = useCallback(() => {
@@ -205,7 +192,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     connDeviceMapRef.current.clear();
     disconnectedPeersRef.current.clear();
     deviceIdToPeerRef.current.clear();
-    connLastSeenRef.current.clear();
     setPeerId(null);
     setConnectionCount(0);
     setDisconnectedCount(0);
@@ -220,7 +206,6 @@ export function useHostTransport(callbacks: HostTransportCallbacks) {
     init,
     broadcast,
     sendTo,
-    getConnDeviceMap,
     destroy,
     peerId,
     connectionCount,

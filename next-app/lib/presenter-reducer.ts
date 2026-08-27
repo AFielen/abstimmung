@@ -20,17 +20,15 @@ export const initialPresenterState: PresenterState = {
   connectedCount: 0,
   disconnectedCount: 0,
   tokenCodes: {},
-  generatedCodes: [],
 };
 
 export type PresenterAction =
   | { type: 'SET_PHASE'; phase: PresenterPhase }
-  | { type: 'START_SESSION'; title: string; voterCount: number; mode: SessionMode; transportMode: TransportMode; tokenCodes: Record<string, TokenInfo>; generatedCodes: string[] }
+  | { type: 'START_SESSION'; title: string; voterCount: number; mode: SessionMode; transportMode: TransportMode; tokenCodes: Record<string, TokenInfo> }
   | { type: 'START_VOTE'; vote: VoteData }
   | { type: 'RECORD_VOTE'; option: string }
   | { type: 'CLOSE_VOTE'; result: VoteResult }
   | { type: 'CANCEL_VOTE' }
-  | { type: 'SET_TIMER'; seconds: number }
   | { type: 'TIMER_TICK' }
   | { type: 'SET_CONNECTIONS'; connected: number; disconnected: number }
   | { type: 'MARK_TOKEN_USED'; code: string; roundId: string }
@@ -54,7 +52,6 @@ export function presenterReducer(
         sessionMode: action.mode,
         transportMode: action.transportMode,
         tokenCodes: action.tokenCodes,
-        generatedCodes: action.generatedCodes,
       };
 
     case 'START_VOTE':
@@ -95,9 +92,6 @@ export function presenterReducer(
         currentVote: null,
         timerSecondsLeft: 0,
       };
-
-    case 'SET_TIMER':
-      return { ...state, timerSecondsLeft: action.seconds };
 
     case 'TIMER_TICK':
       return {

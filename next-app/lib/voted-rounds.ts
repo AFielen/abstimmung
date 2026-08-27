@@ -33,13 +33,3 @@ export function markVoted(roundId: string | null): void {
     localStorage.setItem("drk-voted-rounds", JSON.stringify(rounds));
   } catch { /* ignore */ }
 }
-
-export function clearVoted(roundId: string | null): void {
-  if (!roundId) return;
-  try { sessionStorage.removeItem("drk-voted-" + roundId); } catch { /* ignore */ }
-  try {
-    const rounds = JSON.parse(localStorage.getItem("drk-voted-rounds") || "{}") as Record<string, boolean>;
-    delete rounds[roundId];
-    localStorage.setItem("drk-voted-rounds", JSON.stringify(rounds));
-  } catch { /* ignore */ }
-}

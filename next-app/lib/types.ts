@@ -71,7 +71,6 @@ export interface PresenterState {
   connectedCount: number;
   disconnectedCount: number;
   tokenCodes: Record<string, TokenInfo>;
-  generatedCodes: string[];
 }
 
 // Voter state
