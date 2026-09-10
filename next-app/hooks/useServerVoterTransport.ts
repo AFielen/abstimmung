@@ -154,9 +154,15 @@ export function useServerVoterTransport(callbacks: ServerVoterTransportCallbacks
     await connectWs(roomId);
   }, [connectWs]);
 
-  const send = useCallback((msg: VoterMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+  // Liefert false, wenn der Socket nicht offen ist — der Aufrufer entscheidet,
+  // ob er still verwerfen darf (Heartbeat) oder reagieren muss (Stimmabgabe).
+  const send = useCallback((msg: VoterMessage): boolean => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return false;
+    try {
       wsRef.current.send(JSON.stringify({ type: 'voter-msg', data: msg }));
+      return true;
+    } catch {
+      return false;
     }
   }, []);
 

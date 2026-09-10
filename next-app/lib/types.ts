@@ -80,7 +80,7 @@ export interface PresenterState {
 
 // Voter state
 export type VoterScreen =
-  | 'connecting' | 'waiting' | 'voting' | 'confirmed' | 'result' | 'ended'
+  | 'connecting' | 'waiting' | 'voting' | 'confirmed' | 'already-voted' | 'result' | 'ended'
   | 'reconnecting' | 'error'
   | 'sk-waiting' | 'sk-code' | 'sk-vote' | 'sk-confirmed';
 
@@ -89,6 +89,8 @@ export interface VoterState {
   mode: SessionMode;
   currentRoundId: string | null;
   hasVoted: boolean;
+  /** Letzter Sendeversuch scheiterte (Verbindung weg) — Hinweis im Voting-Screen */
+  sendFailed: boolean;
   voteData: {
     topic: string;
     description: string;

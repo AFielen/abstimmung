@@ -87,6 +87,13 @@ export default function PresenterApp() {
         // connectionId is assigned by the transport layer (PeerJS peer ID or
         // ws-relay connId) — voters cannot spoof it across submissions.
         const connKey = 'conn:' + connectionId;
+        // Der Fingerprint sperrt nur Geraete OHNE persistente Geraete-ID
+        // (localStorage gesperrt, siehe VoterApp). Als allgemeines Sperr-
+        // kriterium taugt er nicht: baugleiche iPhones liefern identische
+        // Signale (Aufloesung, GPU-String „Apple GPU“, Fonts, Audio), sodass
+        // die zweite Person im Saal faelschlich als Doppelstimme abgewiesen
+        // wurde — und das mit der Anzeige „Stimme abgegeben“.
+        const fpKey = fpId && !lsId ? 'fp:' + fpId : null;
 
         if (votedDevices.current.has(connKey)) {
           t.sendTo(connectionId, { type: 'already-voted' });
@@ -96,7 +103,7 @@ export default function PresenterApp() {
           t.sendTo(connectionId, { type: 'already-voted' });
           return;
         }
-        if (fpId && votedDevices.current.has('fp:' + fpId)) {
+        if (fpKey && votedDevices.current.has(fpKey)) {
           t.sendTo(connectionId, { type: 'already-voted' });
           return;
         }
@@ -107,7 +114,7 @@ export default function PresenterApp() {
         // Record vote
         votedDevices.current.add(connKey);
         if (lsId) votedDevices.current.add('ls:' + lsId);
-        if (fpId) votedDevices.current.add('fp:' + fpId);
+        if (fpKey) votedDevices.current.add(fpKey);
 
         dispatch({ type: 'RECORD_VOTE', option: data.option });
         t.sendTo(connectionId, { type: 'vote-confirmed' });
