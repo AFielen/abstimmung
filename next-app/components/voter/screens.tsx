@@ -59,6 +59,7 @@ export function VotingScreen({
   options,
   voteType,
   timerSecondsLeft,
+  sendFailed = false,
   onVote,
 }: {
   topic: string;
@@ -66,6 +67,7 @@ export function VotingScreen({
   options: string[];
   voteType: VoteType;
   timerSecondsLeft: number;
+  sendFailed?: boolean;
   onVote: (option: string) => void;
 }) {
   return (
@@ -78,6 +80,15 @@ export function VotingScreen({
       <h2 className="text-xl font-bold text-center">{topic}</h2>
       {description && (
         <p className="text-[var(--text-light)] text-center text-sm">{description}</p>
+      )}
+      {sendFailed && (
+        <div
+          role="alert"
+          className="w-full rounded-[10px] px-4 py-3 text-sm text-[var(--text)] bg-[var(--warning-bg)] border border-[var(--warning)]"
+        >
+          Die Stimme konnte nicht gesendet werden &ndash; die Verbindung war
+          unterbrochen. Bitte tippen Sie erneut auf Ihre Auswahl.
+        </div>
       )}
       <div className="w-full flex flex-col gap-3 mt-2">
         {options.map((opt) => (
@@ -105,6 +116,29 @@ export function ConfirmedScreen() {
       <p className="text-xl font-bold">Stimme abgegeben!</p>
       <p className="text-[var(--text-light)]">
         Vielen Dank. Bitte warten Sie auf das Ergebnis.
+      </p>
+    </div>
+  );
+}
+
+// ─── AlreadyVotedScreen ─────────────────────────────────────────────────────
+// Abweisung durch den Presenter. Bewusst NICHT gruen und NICHT „abgegeben“:
+// Wer hier landet, dessen Stimme wurde in dieser Runde nicht gezaehlt.
+
+export function AlreadyVotedScreen() {
+  return (
+    <div className="w-full max-w-[420px] flex flex-col items-center gap-4">
+      <div className="w-20 h-20 rounded-full bg-[var(--warning)] text-[var(--text)] flex items-center justify-center text-4xl animate-[pop_0.4s_ease]">
+        !
+      </div>
+      <p className="text-xl font-bold">Stimme nicht gez&auml;hlt</p>
+      <p className="text-[var(--text-light)]">
+        Von diesem Ger&auml;t liegt in dieser Runde bereits eine Stimme vor.
+        Diese Abgabe wurde deshalb nicht erneut gez&auml;hlt.
+      </p>
+      <p className="text-sm text-[var(--text)] bg-[var(--warning-bg)] rounded-[10px] px-4 py-3">
+        Falls Sie in dieser Runde noch nicht abgestimmt haben, melden Sie sich
+        bitte bei der Versammlungsleitung.
       </p>
     </div>
   );

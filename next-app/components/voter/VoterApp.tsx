@@ -12,6 +12,7 @@ import {
   WaitingScreen,
   VotingScreen,
   ConfirmedScreen,
+  AlreadyVotedScreen,
   ResultScreen,
   EndedScreen,
   ReconnectingScreen,
@@ -65,7 +66,7 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   const hasConnectedRef = useRef(false);
 
   // Ref for the active transport so callbacks can reference it
-  const transportRef = useRef<{ send: (msg: any) => void; markSessionEnded: () => void }>(null!);
+  const transportRef = useRef<{ send: (msg: any) => boolean; markSessionEnded: () => void }>(null!);
 
   // --- Timer management ---
 
@@ -248,18 +249,23 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   // --- Initialization ---
 
   useEffect(() => {
-    // Set up device ID
-    let storedDeviceId = '';
+    // Persistente Geraete-ID — nur, wenn localStorage wirklich schreibt und
+    // zurueckliest. Ist der Speicher gesperrt (z.B. Safari „Alle Cookies
+    // blockieren“, manche In-App-Browser), bleibt die ID leer und der
+    // Presenter faellt auf den Fingerprint zurueck. Frueher bekam so ein
+    // Geraet pro Tab eine NEUE Zufalls-ID und konnte beliebig oft abstimmen.
+    let deviceId = '';
     try {
-      storedDeviceId = localStorage.getItem('drk-device-id') || '';
-    } catch { /* ignore */ }
-    if (!storedDeviceId) {
-      storedDeviceId = 'dev-' + randomCode(16);
-      try {
-        localStorage.setItem('drk-device-id', storedDeviceId);
-      } catch { /* ignore */ }
+      deviceId = localStorage.getItem('drk-device-id') || '';
+      if (!deviceId) {
+        const fresh = 'dev-' + randomCode(16);
+        localStorage.setItem('drk-device-id', fresh);
+        if (localStorage.getItem('drk-device-id') === fresh) deviceId = fresh;
+      }
+    } catch {
+      deviceId = '';
     }
-    deviceIdRef.current = storedDeviceId;
+    deviceIdRef.current = deviceId;
 
     // Compute fingerprint
     generateDeviceFingerprint()
@@ -306,12 +312,19 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
   const handleVote = useCallback(
     (option: string) => {
       if (state.hasVoted) return;
-      transport.send({
+      const sent = transport.send({
         type: 'cast-vote',
         option,
         deviceId: deviceIdRef.current,
         fingerprintId: fingerprintRef.current,
       });
+      if (!sent) {
+        // Socket ist zu (iOS kappt Verbindungen im Hintergrund ohne Close-
+        // Frame). Frueher wurde der Tipp still verworfen — die Person glaubte,
+        // abgestimmt zu haben. Jetzt: Hinweis anzeigen und Reconnect anstossen.
+        dispatch({ type: 'SEND_FAILED' });
+        transport.checkConnection();
+      }
     },
     [state.hasVoted, transport]
   );
@@ -363,11 +376,14 @@ export default function VoterApp({ presenterPeerId, transportMode }: VoterAppPro
           options={state.voteData.options}
           voteType={state.voteData.voteType}
           timerSecondsLeft={state.timerSecondsLeft}
+          sendFailed={state.sendFailed}
           onVote={handleVote}
         />
       )}
 
       {state.screen === 'confirmed' && <ConfirmedScreen />}
+
+      {state.screen === 'already-voted' && <AlreadyVotedScreen />}
 
       {state.screen === 'result' && state.resultData && (
         <ResultScreen result={state.resultData} />

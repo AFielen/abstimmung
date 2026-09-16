@@ -13,13 +13,15 @@ export type VoterAction =
   | { type: 'CONNECTED' }
   | { type: 'TIMER_UPDATE'; seconds: number }
   | { type: 'WAITING'; mode: SessionMode }
-  | { type: 'MARK_VOTED' };
+  | { type: 'MARK_VOTED' }
+  | { type: 'SEND_FAILED' };
 
 export const initialVoterState: VoterState = {
   screen: 'connecting',
   mode: 'open',
   currentRoundId: null,
   hasVoted: false,
+  sendFailed: false,
   voteData: null,
   resultData: null,
   timerSecondsLeft: 0,
@@ -43,6 +45,7 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
         mode: action.mode,
         currentRoundId: action.voteRoundId,
         hasVoted: false,
+        sendFailed: false,
         voteData: {
           topic: action.topic,
           description: action.description,
@@ -54,9 +57,15 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
         screen: action.mode === 'stimmkarten' ? 'sk-code' : 'voting',
       };
     case 'VOTE_CONFIRMED':
-    case 'ALREADY_VOTED':
     case 'MARK_VOTED':
       return { ...state, hasVoted: true, screen: 'confirmed' };
+    // Der Presenter hat die Stimme als Doppelabgabe abgewiesen. Das muss
+    // sichtbar anders aussehen als eine Bestaetigung — sonst glaubt eine
+    // faelschlich abgewiesene Person, ihre Stimme sei gezaehlt worden.
+    case 'ALREADY_VOTED':
+      return { ...state, hasVoted: true, screen: 'already-voted' };
+    case 'SEND_FAILED':
+      return { ...state, sendFailed: true };
     case 'VOTE_CLOSED':
       return {
         ...state,
@@ -84,7 +93,7 @@ export function voterReducer(state: VoterState, action: VoterAction): VoterState
     case 'RECONNECT_FAILED':
       return { ...state, screen: 'error' };
     case 'CONNECTED':
-      return { ...state, reconnectAttempt: 0 };
+      return { ...state, reconnectAttempt: 0, sendFailed: false };
     case 'TIMER_UPDATE':
       // Unveraendert -> gleicher State, damit React den Re-Render ueberspringt
       if (state.timerSecondsLeft === action.seconds) return state;

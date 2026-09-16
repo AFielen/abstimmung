@@ -28,7 +28,7 @@ Dieses Tool digitalisiert den Abstimmungsprozess bei Mitgliederversammlungen -- 
 - **Konfigurierbares Zeitlimit** -- einstellbar pro Versammlung, pro Abstimmung ein-/ausschaltbar
 - **Drei Abstimmungsmodi** -- Offener Modus (P2P), Stimmkarten-Modus (P2P) und Server-Modus (WebSocket-Relay)
 - **Eigener Signaling-Server** -- kein 50-Personen-Limit mehr, keine Abhaengigkeit von PeerJS Cloud
-- **Doppelabstimmungs-Schutz** -- mehrstufig (Browser-Fingerprinting, localStorage, Presenter-Pruefung)
+- **Doppelabstimmungs-Schutz** -- mehrstufig (Verbindung, Geraete-ID, Fingerprint als Fallback); Abweisungen werden dem Geraet sichtbar gemeldet
 - **PDF-Protokoll-Export** -- professionell gestaltetes Protokoll mit DRK-Branding und Seitenzahlen (jsPDF)
 - **Automatische Reconnect-Logik** -- Exponential Backoff, bis zu 5 Versuche
 - **Heartbeat/Keep-Alive** -- kontinuierliche Verbindungsueberwachung
@@ -245,11 +245,21 @@ Ausfuehrliche Datenschutzerklaerung: [/datenschutz](next-app/app/datenschutz/pag
 
 ## Doppelabstimmungs-Schutz
 
-Mehrstufiges System:
+Die Entscheidung faellt beim Presenter, der pro Runde festhaelt, von wo bereits
+eine Stimme kam:
 
-1. **Browser-Fingerprinting** -- anonymer Geraete-Hash aus Browser-Signalen (Canvas, WebGL, Audio, Hardware)
-2. **localStorage / sessionStorage** -- Absicherung fuer normale Browser-Fenster und Page Reloads
-3. **Presenter-seitige Pruefung** -- eigene Liste aller bereits abgegebenen Stimmen
+1. **Verbindung** -- die vom Transport vergebene Verbindungs-ID (PeerJS-Peer bzw. Relay-Connection); nicht vom Client waehlbar
+2. **Geraete-ID** -- Zufalls-ID im localStorage, gilt fuer alle Tabs desselben Browsers; wird nur gesendet, wenn der Speicher nachweislich schreibt
+3. **Browser-Fingerprint** -- nur als Fallback fuer Geraete ohne nutzbaren localStorage. Als allgemeines Sperrkriterium ist er ungeeignet: baugleiche iPhones liefern identische Signale und wuerden sich gegenseitig blockieren
+
+Zusaetzlich merkt sich der Client abgestimmte Runden (localStorage, 24 h), damit ein
+neuer Tab gar nicht erst den Stimmzettel zeigt. Eine vom Presenter **abgewiesene**
+Stimme wird dem Geraet als „Stimme nicht gezaehlt" angezeigt -- nie als Bestaetigung.
+
+**Grenze des Verfahrens:** Der offene Modus ist bewusst anonym und ohne Login. Wer
+den Browserspeicher blockiert und ein Geraet mit identischem Fingerprint nutzt, ist
+von einer zweiten Person nicht unterscheidbar. Fuer verbindliche
+Eine-Person-eine-Stimme-Abstimmungen ist der **Stimmkarten-Modus** vorgesehen.
 
 ## Verbindungsstabilitaet
 

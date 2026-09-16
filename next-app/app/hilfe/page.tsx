@@ -10,7 +10,7 @@ const faqItems = [
   },
   {
     q: "Kann jemand doppelt abstimmen?",
-    a: "Das System verwendet ein mehrstufiges Schutzsystem: Browser-Fingerprinting, localStorage-Pruefung und Presenter-seitige Validierung. Ein komplett anderer Browser oder ein anderes Geraet erzeugt einen anderen Fingerprint \u2014 das ist gewollt, da von einer anderen Person ausgegangen wird.",
+    a: "Die Versammlungsleitung merkt sich pro Runde, von welcher Verbindung und welchem Geraet (Zufalls-ID im Browserspeicher, gilt fuer alle Tabs) bereits eine Stimme kam. Ein Browser-Fingerprint dient nur als Fallback, wenn der Browserspeicher gesperrt ist \u2014 baugleiche Geraete sehen sich sonst zu aehnlich. Wird eine Stimme abgewiesen, zeigt das Geraet deutlich \u201eStimme nicht gezaehlt\u201c und nie eine Bestaetigung. Fuer verbindliche Eine-Person-eine-Stimme-Abstimmungen nutzen Sie den Stimmkarten-Modus.",
   },
   {
     q: "Welcher Browser wird empfohlen?",
@@ -240,7 +240,7 @@ export default function HilfePage() {
           {[
             { icon: "\uD83D\uDEAB", title: "Kein Server", desc: "Peer-to-Peer via WebRTC \u2014 alle Daten fliessen direkt zwischen den Geraeten" },
             { icon: "\uD83D\uDD12", title: "Vollstaendig anonym", desc: "Keine Zuordnung von Stimmen zu Personen technisch moeglich" },
-            { icon: "\uD83D\uDEE1\uFE0F", title: "Doppelabstimmungs-Schutz", desc: "Browser-Fingerprinting, localStorage und Presenter-Pruefung (3 Stufen)" },
+            { icon: "\uD83D\uDEE1\uFE0F", title: "Doppelabstimmungs-Schutz", desc: "Verbindung, Geraete-ID und Fingerprint-Fallback \u2014 Abweisungen werden sichtbar gemeldet" },
             { icon: "\uD83D\uDDD1\uFE0F", title: "Keine Datenspeicherung", desc: "Nach Beenden der Versammlung sind alle Daten unwiderruflich geloescht" },
             { icon: "\uD83D\uDD10", title: "Kryptografisch sichere IDs", desc: "Session-IDs mit crypto.getRandomValues() (2\u2076\u2074 Moeglichkeiten)" },
             { icon: "\u2705", title: "DSGVO-konform", desc: "Keine Cookies, kein Tracking, keine Analytics, lokal gehostete Fonts" },

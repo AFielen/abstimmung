@@ -253,9 +253,13 @@ export function useVoterTransport(callbacks: VoterTransportCallbacks) {
   /**
    * Send a message to the host/presenter.
    */
-  const send = useCallback((msg: VoterMessage) => {
-    if (connRef.current && connRef.current.open) {
-      try { connRef.current.send(msg); } catch { /* ignore */ }
+  const send = useCallback((msg: VoterMessage): boolean => {
+    if (!connRef.current || !connRef.current.open) return false;
+    try {
+      connRef.current.send(msg);
+      return true;
+    } catch {
+      return false;
     }
   }, []);
 
