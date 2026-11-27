@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { and, asc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { db } from "@/lib/db";
 import {
   agendaItems,
@@ -20,6 +21,9 @@ import { requireAdmin } from "@/lib/tenant";
 import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
 
 export type ActionState = { ok: boolean; message?: string };
+
+// Mailversand beim Eröffnen: 5 gleichzeitig (siehe lib/mail/pending-invites.ts).
+const MAIL_CONCURRENCY = 5;
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -68,7 +72,7 @@ export async function updateResolutionMeta(
 
   const draft = await loadDraft(parsed.data.kv, parsed.data.resolutionId);
   if (!draft.ok) return draft;
-  const { r } = draft;
+  const { ctx, r } = draft;
 
   const fristEnde = new Date(parsed.data.fristEnde);
   if (Number.isNaN(fristEnde.getTime())) {
@@ -83,6 +87,18 @@ export async function updateResolutionMeta(
       voteChangeMode: parsed.data.voteChangeMode,
     })
     .where(eq(resolutions.id, r.id));
+  await logAudit({
+    action: "resolution.meta_updated",
+    tenantId: ctx.tenant.id,
+    actorUserId: ctx.user.id,
+    targetType: "resolution",
+    targetId: r.id,
+    payload: {
+      betreff: (parsed.data.betreff ?? "").trim(),
+      fristEnde: fristEnde.toISOString(),
+      voteChangeMode: parsed.data.voteChangeMode,
+    },
+  });
 
   revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}/bearbeiten`);
   return { ok: true, message: "Gespeichert" };
@@ -471,17 +487,26 @@ export async function publishResolution(
   const link = `${process.env.APP_URL?.replace(/\/$/, "")}/${ctx.tenant.slug}/beschluss/${r.id}`;
   const subjectTitle =
     r.betreff || `Umlaufverfahren mit ${topCount} Beschlussvorlage${topCount === 1 ? "" : "n"}`;
-  const sendResults = await Promise.allSettled(
-    activeMembers.map((m) =>
-      sendResolutionInvite({
-        to: { email: m.email, name: m.name ?? undefined },
-        tenantName: ctx.tenant.name,
-        resolutionTitle: subjectTitle,
-        resolutionLink: link,
-        fristEnde: r.fristEnde,
-        topCount,
-      }),
-    ),
+  // Begrenzt parallel (wie bei Einladungen), statt alle Mails auf einmal:
+  // Mailjet-Rate-Limits und der DB-Pool bleiben außen vor.
+  const sendResults = await mapWithConcurrency(
+    activeMembers,
+    MAIL_CONCURRENCY,
+    async (m): Promise<PromiseSettledResult<void>> => {
+      try {
+        await sendResolutionInvite({
+          to: { email: m.email, name: m.name ?? undefined },
+          tenantName: ctx.tenant.name,
+          resolutionTitle: subjectTitle,
+          resolutionLink: link,
+          fristEnde: r.fristEnde,
+          topCount,
+        });
+        return { status: "fulfilled", value: undefined };
+      } catch (reason) {
+        return { status: "rejected", reason };
+      }
+    },
   );
 
   // Versandmarker nur für tatsächlich versandte Mails setzen. Aktive Mitglieder

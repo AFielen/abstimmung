@@ -12,7 +12,12 @@ export async function getCurrentUser() {
     .from(users)
     .where(eq(users.id, session.userId))
     .limit(1);
-  return found[0] ?? null;
+  const user = found[0];
+  if (!user) return null;
+  // SUPERADMIN_EMAILS is the source of truth; the DB flag is only a login-time
+  // snapshot. Deriving it here makes removal from the env effective at once
+  // instead of after the next login (sessions live 30 days).
+  return { ...user, isSuperadmin: isSuperadminEmail(user.email) };
 }
 
 export async function requireUser() {
