@@ -54,6 +54,9 @@ export async function sendMail(opts: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ Messages: [message] }),
+    // A hanging Mailjet call must not block a server action until undici's
+    // default timeout (minutes).
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {

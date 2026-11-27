@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createMagicToken } from "@/lib/auth/magic";
 import { logAudit } from "@/lib/audit";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { db } from "@/lib/db";
-import { memberships, users } from "@/lib/db/schema";
+import { magicTokens, memberships, users } from "@/lib/db/schema";
 import { parseMembersFile } from "@/lib/import/parse-members";
 import { sendInviteLink } from "@/lib/mail/templates";
 import { requireAdmin, type TenantContext } from "@/lib/tenant";
@@ -88,13 +88,8 @@ async function inviteUserToTenant(opts: {
     ttlMinutes: 7 * 24 * 60,
   });
 
-  await sendInviteLink({
-    to: { email, name: user.name ?? undefined },
-    inviterName: ctx.user.name ?? ctx.user.email,
-    tenantName: ctx.tenant.name,
-    rawToken: raw,
-  });
-
+  // Audit vor dem Versand: Mitgliedschaft und Token existieren bereits, auch
+  // wenn Mailjet gleich fehlschlägt.
   await logAudit({
     action: "membership.invited",
     tenantId: ctx.tenant.id,
@@ -102,6 +97,13 @@ async function inviteUserToTenant(opts: {
     targetType: "user",
     targetId: user.id,
     payload: { email, role, source, resend: isResend },
+  });
+
+  await sendInviteLink({
+    to: { email, name: user.name ?? undefined },
+    inviterName: ctx.user.name ?? ctx.user.email,
+    tenantName: ctx.tenant.name,
+    rawToken: raw,
   });
 
   return { kind: isResend ? "resent" : "created" };
@@ -189,6 +191,20 @@ export async function removeMember(
     .update(memberships)
     .set({ status: "removed", removedAt: new Date() })
     .where(eq(memberships.id, m.id));
+
+  // Offene Einladungslinks dieses Nutzers für diesen KV ungültig machen –
+  // sonst könnte ein alter Link die Mitgliedschaft wieder aktivieren.
+  await db
+    .update(magicTokens)
+    .set({ consumedAt: new Date() })
+    .where(
+      and(
+        eq(magicTokens.userId, m.userId),
+        eq(magicTokens.tenantId, ctx.tenant.id),
+        eq(magicTokens.purpose, "invite"),
+        isNull(magicTokens.consumedAt),
+      ),
+    );
 
   await logAudit({
     action: "membership.removed",

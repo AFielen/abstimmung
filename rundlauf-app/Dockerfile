@@ -35,6 +35,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.confi
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Protokoll-Archiv (Volume rundlauf-protokolle): the mount point must be owned
+# by the app user. A fresh named volume inherits owner/mode from this path;
+# without it the volume is root-owned and persistProtokoll() fails with EACCES.
+RUN mkdir -p /data/protokolle && chown -R nextjs:nodejs /data
+
 USER nextjs
 EXPOSE 3000
 

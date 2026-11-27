@@ -30,7 +30,8 @@ async function main() {
   let closed = 0;
   for (const r of expired) {
     try {
-      await finalizeResolution(r.id);
+      const done = await finalizeResolution(r.id);
+      if (!done) continue; // inzwischen anderweitig abgeschlossen/zurückgezogen
       await db.insert(auditLog).values({
         action: "resolution.auto_closed",
         tenantId: r.tenantId,

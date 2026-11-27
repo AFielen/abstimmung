@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { logAudit } from "@/lib/audit";
-import { db } from "@/lib/db";
+import { db, isUniqueViolation } from "@/lib/db";
 import {
   agendaItems,
   eligibleVoters,
@@ -102,58 +102,86 @@ export async function submitVote(
     return { ok: false, message: "Du bist für diesen Beschluss nicht stimmberechtigt" };
   }
 
-  // Existierende Stimme für diesen TOP prüfen
-  const existing = (
-    await db
-      .select()
-      .from(votes)
-      .where(and(eq(votes.agendaItemId, top.id), eq(votes.userId, ctx.user.id)))
-      .limit(1)
-  )[0];
-
   const fp = await fingerprint();
 
-  if (existing) {
-    if (r.voteChangeMode === "fest") {
-      return {
-        ok: false,
-        message: "Deine Stimme zu diesem TOP wurde bereits abgegeben und ist unwiderruflich.",
-      };
-    }
-    await db
-      .update(votes)
-      .set({
+  // Transaktion mit FOR SHARE auf der Resolution-Zeile: finalizeResolution()
+  // sperrt dieselbe Zeile per UPDATE. Eine Stimme, die parallel zum Abschluss
+  // eintrifft, wartet und sieht danach "abgeschlossen" – so fehlt im
+  // Ergebnis-Snapshot keine gezählte Stimme. Zwei gleichzeitige Erststimmen
+  // desselben Nutzers fängt der Unique-Index votes(agenda_item_id, user_id).
+  let outcome: "submitted" | "updated" | "closed" | "fixed";
+  try {
+    outcome = await db.transaction(async (tx) => {
+      const locked = (
+        await tx
+          .select({ status: resolutions.status, fristEnde: resolutions.fristEnde })
+          .from(resolutions)
+          .where(eq(resolutions.id, r.id))
+          .for("share")
+      )[0];
+      if (!locked || locked.status !== "laufend" || isPastDeadline(locked.fristEnde)) {
+        return "closed" as const;
+      }
+
+      const existing = (
+        await tx
+          .select({ id: votes.id })
+          .from(votes)
+          .where(and(eq(votes.agendaItemId, top.id), eq(votes.userId, ctx.user.id)))
+          .limit(1)
+      )[0];
+
+      if (existing) {
+        if (r.voteChangeMode === "fest") return "fixed" as const;
+        await tx
+          .update(votes)
+          .set({
+            optionId: parsed.data.optionId,
+            updatedAt: new Date(),
+            ipHash: fp.ipHash,
+            userAgentHash: fp.uaHash,
+          })
+          .where(eq(votes.id, existing.id));
+        return "updated" as const;
+      }
+
+      await tx.insert(votes).values({
+        agendaItemId: top.id,
+        userId: ctx.user.id,
         optionId: parsed.data.optionId,
-        updatedAt: new Date(),
         ipHash: fp.ipHash,
         userAgentHash: fp.uaHash,
-      })
-      .where(eq(votes.id, existing.id));
-    await logAudit({
-      action: "vote.updated",
-      tenantId: ctx.tenant.id,
-      actorUserId: ctx.user.id,
-      targetType: "agenda_item",
-      targetId: top.id,
-      payload: { optionId: parsed.data.optionId, resolutionId: r.id },
+      });
+      return "submitted" as const;
     });
-  } else {
-    await db.insert(votes).values({
-      agendaItemId: top.id,
-      userId: ctx.user.id,
-      optionId: parsed.data.optionId,
-      ipHash: fp.ipHash,
-      userAgentHash: fp.uaHash,
-    });
-    await logAudit({
-      action: "vote.submitted",
-      tenantId: ctx.tenant.id,
-      actorUserId: ctx.user.id,
-      targetType: "agenda_item",
-      targetId: top.id,
-      payload: { optionId: parsed.data.optionId, resolutionId: r.id },
-    });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return {
+        ok: false,
+        message: "Deine Stimme wurde gerade schon gespeichert. Bitte lade die Seite neu.",
+      };
+    }
+    throw err;
   }
+
+  if (outcome === "closed") {
+    return { ok: false, message: "Beschluss ist nicht (mehr) laufend oder die Frist ist abgelaufen" };
+  }
+  if (outcome === "fixed") {
+    return {
+      ok: false,
+      message: "Deine Stimme zu diesem TOP wurde bereits abgegeben und ist unwiderruflich.",
+    };
+  }
+
+  await logAudit({
+    action: outcome === "updated" ? "vote.updated" : "vote.submitted",
+    tenantId: ctx.tenant.id,
+    actorUserId: ctx.user.id,
+    targetType: "agenda_item",
+    targetId: top.id,
+    payload: { optionId: parsed.data.optionId, resolutionId: r.id },
+  });
 
   revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}`);
   return { ok: true, message: "Stimme gespeichert" };
@@ -181,7 +209,8 @@ export async function closeResolution(
   if (!belongsToTenant(r, ctx.tenant.id)) return { ok: false, message: "Beschluss nicht gefunden" };
   if (r.status !== "laufend") return { ok: false, message: "Beschluss ist nicht laufend" };
 
-  await finalizeResolution(r.id);
+  const finalized = await finalizeResolution(r.id);
+  if (!finalized) return { ok: false, message: "Beschluss ist nicht (mehr) laufend" };
   await logAudit({
     action: "resolution.closed",
     tenantId: ctx.tenant.id,
@@ -210,10 +239,12 @@ export async function withdrawResolution(
   if (!belongsToTenant(r, ctx.tenant.id)) return { ok: false, message: "Beschluss nicht gefunden" };
   if (r.status !== "laufend") return { ok: false, message: "Beschluss ist nicht laufend" };
 
-  await db
+  const withdrawn = await db
     .update(resolutions)
     .set({ status: "zurueckgezogen", abgeschlossenAm: new Date() })
-    .where(eq(resolutions.id, r.id));
+    .where(and(eq(resolutions.id, r.id), eq(resolutions.status, "laufend")))
+    .returning({ id: resolutions.id });
+  if (withdrawn.length === 0) return { ok: false, message: "Beschluss ist nicht (mehr) laufend" };
   await logAudit({
     action: "resolution.withdrawn",
     tenantId: ctx.tenant.id,

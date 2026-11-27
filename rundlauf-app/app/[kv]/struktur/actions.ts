@@ -239,6 +239,13 @@ export async function unarchiveBody(
     .update(bodies)
     .set({ archivedAt: null })
     .where(eq(bodies.id, body.id));
+  await logAudit({
+    action: "body.unarchived",
+    tenantId: ctx.tenant.id,
+    actorUserId: ctx.user.id,
+    targetType: "body",
+    targetId: body.id,
+  });
   revalidatePath(`/${parsed.data.kv}/struktur`);
   return { ok: true, message: "Gremium wiederhergestellt" };
 }

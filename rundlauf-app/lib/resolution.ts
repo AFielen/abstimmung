@@ -82,7 +82,9 @@ export function computeAgendaItemResult(opts: {
   const eligibleCount = Math.max(opts.eligibleCount, 0);
   const participationPct = eligibleCount === 0 ? 0 : (voteCount / eligibleCount) * 100;
   const quorumPct = opts.agendaItem.quorumPct ?? 75;
-  const quorumReached = participationPct >= quorumPct;
+  // Integer comparison: 29 of 50 at 58 % must count as reached; the float form
+  // (57.99999999999999 >= 58) says no. No voters → no quorum.
+  const quorumReached = eligibleCount > 0 && voteCount * 100 >= quorumPct * eligibleCount;
 
   const nonAbstain = options.filter((o) => !o.isAbstain);
   const yesOpt = nonAbstain[0];
@@ -91,9 +93,14 @@ export function computeAgendaItemResult(opts: {
   const noCount = noOpt ? (opts.voteCounts[noOpt.id] ?? 0) : 0;
   const effectiveVotes = yesCount + noCount;
   const thresholdPct = MAJORITY_THRESHOLD[opts.agendaItem.mehrheit] ?? 50;
-  const yesPct = effectiveVotes === 0 ? 0 : (yesCount / effectiveVotes) * 100;
+  // Exact fractions instead of percentages: 2 of 3 is exactly two thirds.
   const majorityReached =
-    opts.agendaItem.mehrheit === "simple" ? yesPct > thresholdPct : yesPct >= thresholdPct;
+    effectiveVotes > 0 &&
+    (opts.agendaItem.mehrheit === "two_thirds"
+      ? yesCount * 3 >= effectiveVotes * 2
+      : opts.agendaItem.mehrheit === "three_quarters"
+        ? yesCount * 4 >= effectiveVotes * 3
+        : yesCount * 2 > effectiveVotes);
 
   return {
     eligibleCount,

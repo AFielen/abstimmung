@@ -52,17 +52,6 @@ export async function approveTenant(
       ),
     );
 
-  const creator = (
-    await db.select().from(users).where(eq(users.id, tenantRow.createdByUserId)).limit(1)
-  )[0];
-  if (creator) {
-    await sendTenantApproved({
-      to: { email: creator.email },
-      tenantName: tenantRow.name,
-      tenantSlug: tenantRow.slug,
-    });
-  }
-
   await logAudit({
     action: "tenant.approved",
     tenantId: tenantRow.id,
@@ -71,8 +60,25 @@ export async function approveTenant(
     targetId: tenantRow.id,
   });
 
+  const creator = (
+    await db.select().from(users).where(eq(users.id, tenantRow.createdByUserId)).limit(1)
+  )[0];
+  let mailNote = "";
+  if (creator) {
+    try {
+      await sendTenantApproved({
+        to: { email: creator.email },
+        tenantName: tenantRow.name,
+        tenantSlug: tenantRow.slug,
+      });
+    } catch (err) {
+      console.error("[admin] approval mail failed", tenantRow.id, err);
+      mailNote = " (Benachrichtigung konnte nicht versendet werden)";
+    }
+  }
+
   revalidatePath("/admin");
-  return { ok: true, message: "KV freigeschaltet" };
+  return { ok: true, message: `KV freigeschaltet${mailNote}` };
 }
 
 export async function rejectTenant(
@@ -101,17 +107,6 @@ export async function rejectTenant(
     })
     .where(eq(tenants.id, tenantRow.id));
 
-  const creator = (
-    await db.select().from(users).where(eq(users.id, tenantRow.createdByUserId)).limit(1)
-  )[0];
-  if (creator) {
-    await sendTenantRejected({
-      to: { email: creator.email },
-      tenantName: tenantRow.name,
-      reason: parsed.data.reason,
-    });
-  }
-
   await logAudit({
     action: "tenant.rejected",
     tenantId: tenantRow.id,
@@ -121,6 +116,23 @@ export async function rejectTenant(
     payload: { reason: parsed.data.reason },
   });
 
+  const creator = (
+    await db.select().from(users).where(eq(users.id, tenantRow.createdByUserId)).limit(1)
+  )[0];
+  let mailNote = "";
+  if (creator) {
+    try {
+      await sendTenantRejected({
+        to: { email: creator.email },
+        tenantName: tenantRow.name,
+        reason: parsed.data.reason,
+      });
+    } catch (err) {
+      console.error("[admin] rejection mail failed", tenantRow.id, err);
+      mailNote = " (Benachrichtigung konnte nicht versendet werden)";
+    }
+  }
+
   revalidatePath("/admin");
-  return { ok: true, message: "Antrag abgelehnt" };
+  return { ok: true, message: `Antrag abgelehnt${mailNote}` };
 }

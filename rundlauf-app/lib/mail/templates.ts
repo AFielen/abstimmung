@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from "@/lib/html-escape";
 import { sendMail } from "./mailjet";
 
 function appUrl(): string {
@@ -28,7 +29,7 @@ const ctaButton = (href: string, label: string) =>
 const linkFallback = (link: string, withHint = false) =>
   `<p style="font-size: 0.85rem; color: #6b7280; word-break: break-all;">${withHint ? "Oder kopiere diesen Link in deinen Browser:<br>" : ""}${link}</p>`;
 
-const greetingHtml = (name?: string) => (name ? `Hallo <strong>${name}</strong>,` : "Hallo,");
+const greetingHtml = (name?: string) => (name ? `Hallo <strong>${esc(name)}</strong>,` : "Hallo,");
 
 const formatFrist = (d: Date) =>
   d.toLocaleString("de-DE", { dateStyle: "long", timeStyle: "short" });
@@ -89,9 +90,9 @@ export async function sendInviteLink(opts: {
 
 
   const html = HTML_WRAPPER(
-    `Einladung in ${opts.tenantName}`,
+    `Einladung in ${esc(opts.tenantName)}`,
     `<p>${greetingHtml(opts.to.name)}</p>
-     <p><strong>${opts.inviterName}</strong> hat dich eingeladen, im Kreisverband <strong>${opts.tenantName}</strong> an digitalen Umlaufbeschlüssen mitzuwirken.</p>
+     <p><strong>${esc(opts.inviterName)}</strong> hat dich eingeladen, im Kreisverband <strong>${esc(opts.tenantName)}</strong> an digitalen Umlaufbeschlüssen mitzuwirken.</p>
      <p>DRK Rundlaufbeschlüsse ist das Online-Tool, mit dem die Gremien des Deutschen Roten Kreuzes rechtssicher und transparent zwischen Sitzungen über Beschlussvorlagen abstimmen.</p>
      ${ctaButton(link, "Einladung annehmen")}
      ${linkFallback(link, true)}
@@ -113,9 +114,9 @@ export async function sendSuperadminNewTenantNotice(opts: {
     "Neuer KV wartet auf Freischaltung",
     `<p>Ein neuer Kreisverband wartet auf Freischaltung:</p>
      <ul>
-       <li><strong>Name:</strong> ${opts.tenantName}</li>
-       <li><strong>Slug:</strong> ${opts.tenantSlug}</li>
-       <li><strong>Angelegt von:</strong> ${opts.createdByEmail}</li>
+       <li><strong>Name:</strong> ${esc(opts.tenantName)}</li>
+       <li><strong>Slug:</strong> ${esc(opts.tenantSlug)}</li>
+       <li><strong>Angelegt von:</strong> ${esc(opts.createdByEmail)}</li>
      </ul>
      ${ctaButton(link, "Moderations-Queue öffnen")}`,
   );
@@ -130,8 +131,8 @@ export async function sendTenantApproved(opts: {
   const link = `${appUrl()}/${opts.tenantSlug}`;
   const text = `Dein Kreisverband "${opts.tenantName}" wurde freigeschaltet.\n\nLogin: ${link}`;
   const html = HTML_WRAPPER(
-    `KV ${opts.tenantName} freigeschaltet`,
-    `<p>Dein Kreisverband <strong>${opts.tenantName}</strong> wurde freigeschaltet. Du kannst jetzt Mitglieder einladen und Beschlüsse anlegen.</p>
+    `KV ${esc(opts.tenantName)} freigeschaltet`,
+    `<p>Dein Kreisverband <strong>${esc(opts.tenantName)}</strong> wurde freigeschaltet. Du kannst jetzt Mitglieder einladen und Beschlüsse anlegen.</p>
      ${ctaButton(link, "Zur Übersicht")}`,
   );
   await sendMail({ to: opts.to, subject: `KV ${opts.tenantName} freigeschaltet`, text, html });
@@ -145,8 +146,8 @@ export async function sendTenantRejected(opts: {
   const text = `Dein Antrag für den Kreisverband "${opts.tenantName}" wurde abgelehnt.\n\nBegründung: ${opts.reason}`;
   const html = HTML_WRAPPER(
     `KV-Antrag abgelehnt`,
-    `<p>Dein Antrag für den Kreisverband <strong>${opts.tenantName}</strong> wurde abgelehnt.</p>
-     <p><strong>Begründung:</strong> ${opts.reason}</p>`,
+    `<p>Dein Antrag für den Kreisverband <strong>${esc(opts.tenantName)}</strong> wurde abgelehnt.</p>
+     <p><strong>Begründung:</strong> ${esc(opts.reason)}</p>`,
   );
   await sendMail({ to: opts.to, subject: `KV-Antrag abgelehnt`, text, html });
 }
@@ -166,10 +167,10 @@ export async function sendResolutionInvite(opts: {
       : "";
   const text = `Hallo,\n\nim Kreisverband "${opts.tenantName}" wurde ein neues Umlaufverfahren eröffnet:\n\n"${opts.resolutionTitle}"\n\n${topInfo}Frist: ${fristStr}\n\nZum Abstimmen:\n${opts.resolutionLink}`;
   const html = HTML_WRAPPER(
-    `Neues Umlaufverfahren: ${opts.resolutionTitle}`,
-    `<p>Im Kreisverband <strong>${opts.tenantName}</strong> wurde ein neues Umlaufverfahren eröffnet:</p>
+    `Neues Umlaufverfahren: ${esc(opts.resolutionTitle)}`,
+    `<p>Im Kreisverband <strong>${esc(opts.tenantName)}</strong> wurde ein neues Umlaufverfahren eröffnet:</p>
      <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
-       <strong>${opts.resolutionTitle}</strong><br/>
+       <strong>${esc(opts.resolutionTitle)}</strong><br/>
        ${topInfo}Frist: ${fristStr}
      </p>
      ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}`,
@@ -195,9 +196,9 @@ export async function sendVoteReminder(opts: {
   const html = HTML_WRAPPER(
     "Erinnerung: bitte noch abstimmen",
     `<p>${greetingHtml(opts.to.name)}</p>
-     <p>im Kreisverband <strong>${opts.tenantName}</strong> läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:</p>
+     <p>im Kreisverband <strong>${esc(opts.tenantName)}</strong> läuft noch ein Umlaufverfahren, zu dem deine Stimme aussteht:</p>
      <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
-       <strong>${opts.resolutionTitle}</strong><br/>
+       <strong>${esc(opts.resolutionTitle)}</strong><br/>
        Frist: ${fristStr}
      </p>
      ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}
@@ -229,9 +230,9 @@ export async function sendInviteReminder(opts: {
     "Der Link ist 7 Tage gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.",
   ].join("\n");
   const html = HTML_WRAPPER(
-    `Erinnerung: Einladung zu ${opts.tenantName} noch offen`,
+    `Erinnerung: Einladung zu ${esc(opts.tenantName)} noch offen`,
     `<p>${greetingHtml(opts.to.name)}</p>
-     <p>im Kreisverband <strong>${opts.tenantName}</strong> wartet eine Abstimmung auf dich – deine Einladung ist noch offen.</p>
+     <p>im Kreisverband <strong>${esc(opts.tenantName)}</strong> wartet eine Abstimmung auf dich – deine Einladung ist noch offen.</p>
      ${ctaButton(link, "Einladung annehmen")}
      ${linkFallback(link, true)}
      <p style="font-size: 0.85rem; color: #6b7280;">Der Link ist <strong>7 Tage</strong> gültig. Falls du nicht teilnehmen möchtest, kannst du diese E-Mail ignorieren.</p>`,

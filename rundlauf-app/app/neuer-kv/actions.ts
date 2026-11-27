@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireUser, getSuperadminEmails } from "@/lib/auth/current-user";
 import { logAudit } from "@/lib/audit";
@@ -9,6 +9,22 @@ import { bodies, memberships, organizations, tenants } from "@/lib/db/schema";
 import { sendSuperadminNewTenantNotice } from "@/lib/mail/templates";
 import { slugify } from "@/lib/slug";
 import { invalidInput } from "@/lib/action-helpers";
+
+// Statische Routen haben Vorrang vor /[kv] – ein KV mit so einer Kennung wäre
+// unerreichbar.
+const RESERVED_SLUGS = new Set([
+  "admin",
+  "api",
+  "auth",
+  "login",
+  "logout",
+  "neuer-kv",
+  "registrieren",
+  "impressum",
+  "datenschutz",
+  "hilfe",
+  "_next",
+]);
 
 const schema = z.object({
   name: z
@@ -21,6 +37,7 @@ const schema = z.object({
     .min(3)
     .max(64)
     .regex(/^[a-z0-9-]+$/, "Slug darf nur Kleinbuchstaben, Zahlen und Bindestriche enthalten")
+    .refine((v) => !RESERVED_SLUGS.has(v), "Diese Kennung ist reserviert")
     .transform((v) => v.trim()),
 });
 
@@ -48,6 +65,20 @@ export async function createTenant(
     .limit(1);
   if (slugTaken.length > 0) {
     return { ok: false, message: "Diese Kennung ist bereits vergeben" };
+  }
+
+  // Höchstens ein offener Antrag pro Nutzer – jeder Antrag löst Mails an alle
+  // Super-Admins aus.
+  const openRequest = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(and(eq(tenants.createdByUserId, user.id), eq(tenants.status, "pending")))
+    .limit(1);
+  if (openRequest.length > 0) {
+    return {
+      ok: false,
+      message: "Es liegt bereits ein offener Antrag von dir vor. Bitte warte auf die Freischaltung.",
+    };
   }
 
   const inserted = await db
