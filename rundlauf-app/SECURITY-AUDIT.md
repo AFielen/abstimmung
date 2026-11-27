@@ -68,4 +68,11 @@ ohne Informationsabfluss, keine Account-Enumeration über Login-Antworten.
   Security-Header gesetzt, kein `X-Powered-By`.
 - Datenbestand unverändert (3 Mandanten, 22 Nutzer, 2 Beschlüsse, 16 Stimmen).
 
-*Nächste Prüfung: turnusmäßig quartalsweise (VPS-SECURITY §10).*
+## Akzeptierte Restrisiken (Entscheidung Plattform-Owner, 2026-11-27)
+
+| Punkt | Risiko | Aktuelle Abmilderung | Nachzuholen |
+|---|---|---|---|
+| Kein externes Uptime-Monitoring | Ausfall wird erst beim nächsten Login oder durch Nutzer bemerkt | Docker-Healthchecks mit Neustart, `health-check.sh` bei jedem Login, Ping-Hook im Backup-Sidecar vorbereitet | healthchecks.io-Check und HTTP-Monitor anlegen, `RUNDLAUF_BACKUP_PING_URL` setzen |
+| Kein verschlüsseltes Off-site-Backup der Volumes | Bei Verlust des Servers nur Hetzner-Server-Backup verfügbar | Hetzner-Server-Backups aktiv, tägliche `pg_dump`-Dumps im Volume (14 Tage), Restore-Weg dokumentiert | Storage-Box-Credentials und age-Key in `/srv/ops/.env`, erster Lauf von `backup.sh`, Restore-Test |
+
+*Nächste Prüfung: turnusmäßig quartalsweise (VPS-SECURITY §10), spätestens beim Nachholen der beiden Punkte.*
