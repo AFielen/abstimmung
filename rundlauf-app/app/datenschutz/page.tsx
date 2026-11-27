@@ -20,12 +20,12 @@ export default function DatenschutzPage() {
         className="rounded-[var(--radius)] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
         style={{ background: "var(--white)" }}
       >
-        <h2
+        <h1
           className="text-[1.3rem] mb-5 pb-2"
           style={{ color: "var(--drk)", borderBottom: "2px solid var(--drk)" }}
         >
           Datenschutzerkl&auml;rung
-        </h2>
+        </h1>
 
         <p className="mb-5 text-[0.95rem]" style={{ color: "var(--text-light)" }}>
           Diese Datenschutzerkl&auml;rung gilt f&uuml;r beide unter der Domain{" "}

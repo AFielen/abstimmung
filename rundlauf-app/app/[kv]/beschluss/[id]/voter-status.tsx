@@ -295,7 +295,7 @@ function VoterRow({
                 ? "var(--success)"
                 : state === "partial"
                   ? "#b45309"
-                  : "var(--text-muted)",
+                  : "var(--text-light)",
           }}
         >
           {meta}

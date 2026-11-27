@@ -111,7 +111,7 @@ export function EligibilitySection({
                     <span className="font-medium">{m.displayName}</span>
                     <span
                       className="text-xs ml-2"
-                      style={{ color: "var(--text-light)" }}
+                      style={{ color: "#4b5563" }}
                     >
                       {m.email} · {roleLabel(m.role)}
                     </span>
@@ -119,8 +119,8 @@ export function EligibilitySection({
                       <span
                         className="text-xs ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5"
                         style={{
-                          background: "var(--drk-bg)",
-                          color: "var(--drk)",
+                          background: "var(--warning-bg)",
+                          color: "#b45309",
                         }}
                         title="Mitglied hat die KV-Einladung noch nicht angenommen"
                       >
