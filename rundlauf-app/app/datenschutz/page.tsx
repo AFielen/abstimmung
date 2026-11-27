@@ -38,9 +38,9 @@ export default function DatenschutzPage() {
 
         {/* 1. Verantwortlicher */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             1. Verantwortlicher
-          </h3>
+          </h2>
           <p className="mb-2">DRK-Kreisverband St&auml;dteRegion Aachen e.V.</p>
           <p className="mb-2">Henry-Dunant-Platz 1, 52146 W&uuml;rselen</p>
           <p className="mb-2">
@@ -58,9 +58,9 @@ export default function DatenschutzPage() {
 
         {/* 2. Geltungsbereich und Grundsaetze */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             2. Geltungsbereich und Grunds&auml;tze
-          </h3>
+          </h2>
           <p className="mb-2">
             Die beiden Dienste verarbeiten unterschiedliche Datenmengen. Es gibt in keinem
             Fall Tracking, Analytics oder Werbe-Cookies. Es werden keine Daten an Dritte
@@ -113,9 +113,9 @@ export default function DatenschutzPage() {
 
         {/* 3. Kommunikation */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             3. Kommunikation zwischen den Ger&auml;ten
-          </h3>
+          </h2>
           <p className="mb-2">
             Die Live-Abstimmung bietet zwei Kommunikationsmodi. In beiden F&auml;llen
             werden <strong>keine Abstimmungsdaten dauerhaft gespeichert</strong>.
@@ -180,9 +180,9 @@ export default function DatenschutzPage() {
 
         {/* 4. Anonymitat der Abstimmung */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             4. Anonymit&auml;t der Abstimmung
-          </h3>
+          </h2>
           <p className="mb-2">
             Die Live-Abstimmung ist <strong>vollst&auml;ndig anonym</strong>. Der
             Versammlungsleiter sieht ausschlie&szlig;lich die aggregierten Ergebnisse
@@ -199,9 +199,9 @@ export default function DatenschutzPage() {
 
         {/* 5. Browser-Fingerprinting */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             5. Doppelabstimmungs-Schutz (Browser-Fingerprinting)
-          </h3>
+          </h2>
           <p className="mb-2">
             Um Mehrfachabstimmungen zu verhindern, erzeugt die Live-Abstimmung einen{" "}
             <strong>anonymen Ger&auml;te-Hash</strong> aus verschiedenen Browser-Signalen
@@ -230,9 +230,9 @@ export default function DatenschutzPage() {
 
         {/* 6. localStorage */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             6. Lokale Speicherung (localStorage / sessionStorage)
-          </h3>
+          </h2>
           <p className="mb-2">
             Die Live-Abstimmung nutzt den lokalen Speicher des Browsers (localStorage und
             sessionStorage) ausschlie&szlig;lich f&uuml;r:
@@ -254,9 +254,9 @@ export default function DatenschutzPage() {
 
         {/* 7. Hosting */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             7. Hosting und Infrastruktur
-          </h3>
+          </h2>
           <p className="mb-2">
             Die Anwendung und der Signal-Server werden bei <strong>Hetzner Online GmbH</strong>{" "}
             auf einem <strong>Server in Deutschland</strong> betrieben. Hetzner erhebt
@@ -273,9 +273,9 @@ export default function DatenschutzPage() {
 
         {/* 8. Keine externen Schriftarten */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             8. Keine externen Schriftarten oder CDNs
-          </h3>
+          </h2>
           <p className="mb-2">
             Alle verwendeten Schriftarten sind <strong>lokal auf unserem Server</strong>{" "}
             gehostet und werden direkt mit der Anwendung ausgeliefert. Es findet{" "}
@@ -288,9 +288,9 @@ export default function DatenschutzPage() {
 
         {/* 9. Keine persistente Speicherung */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             9. Keine persistente Datenspeicherung (Live-Abstimmung)
-          </h3>
+          </h2>
           <p className="mb-2">
             Nach dem Beenden der Versammlung oder Schlie&szlig;en des Browser-Fensters
             sind alle Daten der Live-Abstimmung <strong>unwiderruflich gel&ouml;scht</strong>.
@@ -314,9 +314,9 @@ export default function DatenschutzPage() {
 
         {/* 10. Rundlaufbeschluss - Datenverarbeitung */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             10. Rundlaufbeschluss &ndash; Datenverarbeitung im Umlaufverfahren
-          </h3>
+          </h2>
           <p className="mb-2">
             Der Rundlaufbeschluss-Dienst (rundlauf.drk-abstimmung.de) bildet das
             Umlaufverfahren f&uuml;r Pr&auml;sidien gem&auml;&szlig; &sect; 21 Abs. 6 der
@@ -398,9 +398,9 @@ export default function DatenschutzPage() {
 
         {/* 11. Ihre Rechte */}
         <div className="mb-6">
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             11. Ihre Rechte
-          </h3>
+          </h2>
           <p className="mb-2">
             Soweit personenbezogene Daten verarbeitet werden (insbesondere im
             Rundlaufbeschluss-Dienst), haben Sie nach DSGVO Anspruch auf:
@@ -446,9 +446,9 @@ export default function DatenschutzPage() {
 
         {/* 12. Anderungen */}
         <div>
-          <h3 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
+          <h2 className="text-[1.05rem] font-bold mb-1" style={{ color: "var(--text)" }}>
             12. &Auml;nderungen
-          </h3>
+          </h2>
           <p className="mb-2">
             Wir behalten uns vor, diese Datenschutzerkl&auml;rung bei Bedarf anzupassen,
             insbesondere bei technischen &Auml;nderungen an den Anwendungen. Die jeweils

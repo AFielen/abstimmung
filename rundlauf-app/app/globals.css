@@ -4,7 +4,7 @@
   --color-drk: #e30613;
   --color-drk-dark: #b8000f;
   --color-drk-light: #ff1a2e;
-  --color-drk-bg: #fef2f2;
+  --color-drk-bg: #fff5f5;
   --color-white: #fff;
   --color-bg: #f8f9fa;
   --color-bg-card: #ffffff;
@@ -25,7 +25,7 @@
   --drk: #e30613;
   --drk-dark: #b8000f;
   --drk-light: #ff1a2e;
-  --drk-bg: #fef2f2;
+  --drk-bg: #fff5f5;
 
   /* Text */
   --text: #212529;
@@ -280,7 +280,7 @@ body {
 /* Aktiver Navigationspunkt (TenantNav setzt aria-current="page"). */
 .drk-btn-secondary[aria-current="page"] {
   background: var(--drk-bg);
-  color: var(--drk);
+  color: var(--drk-dark);
   font-weight: 600;
 }
 
