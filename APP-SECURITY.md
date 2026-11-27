@@ -218,9 +218,9 @@ docker compose start rundlauf rundlauf-retention rundlauf-reminders rundlauf-aut
 - [x] Security-Review: Protokoll-Zugriff, Mail-Escaping, Einladungs-Reaktivierung, Magic-Link-Drosselung, Quorum-Arithmetik, atomarer Abschluss
 - [x] Unit-Tests (`npm test`) und CI auf PRs
 - [x] Deploy auf den Produktiv-VPS (2026-11-27, Stand `fea6258`) und Post-Deploy-Check: `/api/health` 200, erster Dump im Backup-Volume (13 Tabellen, `pg_restore --list` ok), Protokoll-Archiv beschreibbar (uid 1001), alle sechs Container healthy mit `cap_drop: [ALL]`, Cron-Erstläufe sauber
-- [ ] Plattform: Off-site-Backup-Credentials in `/srv/ops/.env`, erster Restore-Test
-- [ ] Plattform: externes Uptime-Monitoring für `rundlauf.drk-abstimmung.de`
-- [ ] DSB: AVV Hetzner/Mailjet bestätigt, `/datenschutz` geprüft, Kontakt im Runbook
-- [ ] Fachlich: Satzungsgrundlage (§ 21 Abs. 6, § 22 Abs. 5) mit Präsidium bestätigt, Quorum-/Mehrheitsvorgaben je Gremium gepflegt
+- [ ] Plattform: Off-site-Backup-Credentials in `/srv/ops/.env`, erster Restore-Test – **zurückgestellt** (Entscheidung Plattform-Owner 2026-11-27); bis dahin: Hetzner-Server-Backups plus tägliche lokale Dumps im Volume `rundlauf-db-backups`
+- [ ] Plattform: externes Uptime-Monitoring für `rundlauf.drk-abstimmung.de` – **zurückgestellt** (Entscheidung Plattform-Owner 2026-11-27); bis dahin: Docker-Healthchecks, `health-check.sh` beim Login, Ping-Hook im Backup-Sidecar vorbereitet (`RUNDLAUF_BACKUP_PING_URL`)
+- [x] DSB: AVV Hetzner/Mailjet bestätigt (Plattform-Owner, 2026-11-27); `/datenschutz` geprüft; Kontakt im Runbook nachtragen
+- [x] Fachlich: Satzungsgrundlage (§ 21 Abs. 6, § 22 Abs. 5) mit Präsidium bestätigt (2026-11-27); Quorum-/Mehrheitsvorgaben je Gremium in der App gepflegt
 
-*Stand: 2026-11-27, nach Produktiv-Deploy.*
+*Stand: 2026-11-27, nach Produktiv-Deploy und Abnahme durch den Plattform-Owner. Zwei Plattform-Punkte bewusst zurückgestellt (siehe Checkliste und `rundlauf-app/SECURITY-AUDIT.md`, „Akzeptierte Restrisiken“).*
