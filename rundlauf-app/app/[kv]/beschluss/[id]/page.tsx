@@ -17,7 +17,7 @@ import {
   parseOptions,
   type ResolutionResult,
 } from "@/lib/resolution";
-import { formatBytes, mehrheitLabel, statusBadgeClass, statusLabel } from "@/lib/format";
+import { formatBytes, formatDateTime, mehrheitLabel, statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { VoteForm } from "./vote-form";
 import { AdminActions } from "./admin-actions";
@@ -181,7 +181,7 @@ export default async function ResolutionPage({
             ) : null}
             <h1 className="text-2xl font-bold mt-1 break-words">{title}</h1>
             <div className="text-sm mt-1" style={{ color: "var(--text-light)" }}>
-              Frist: {new Date(r.fristEnde).toLocaleString("de-DE")} ·{" "}
+              Frist: {formatDateTime(r.fristEnde)} ·{" "}
               {past ? "abgelaufen" : "noch offen"}
               {" · "}
               {r.voteChangeMode === "fest" ? "Feste Stimmen" : "Änderbar bis Frist"}
@@ -345,7 +345,7 @@ export default async function ResolutionPage({
                       {options.find((o) => o.id === myVote.optionId)?.label ?? myVote.optionId}
                     </strong>{" "}
                     <span style={{ color: "var(--text-light)" }}>
-                      ({new Date(myVote.updatedAt).toLocaleString("de-DE")})
+                      ({formatDateTime(myVote.updatedAt)})
                     </span>
                   </p>
                 ) : (

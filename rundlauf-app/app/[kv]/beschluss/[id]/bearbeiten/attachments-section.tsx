@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { deleteAttachment } from "./actions";
 import { formatBytes } from "@/lib/format";
 import type { DraftAttachment, DraftTop } from "./draft-types";
@@ -17,6 +18,7 @@ export function AttachmentsSection({
   attachments: DraftAttachment[];
   tops: DraftTop[];
 }) {
+  const router = useRouter();
   const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -43,7 +45,7 @@ export function AttachmentsSection({
       } else {
         setUploadMsg({ ok: true, text: "Anlage hochgeladen." });
         form.reset();
-        window.location.reload();
+        router.refresh();
       }
     } catch {
       setUploadMsg({ ok: false, text: "Upload fehlgeschlagen." });

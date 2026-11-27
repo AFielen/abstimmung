@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { addAgendaItem, deleteAgendaItem, updateAgendaItem } from "./actions";
 import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
@@ -91,15 +91,14 @@ function NewTopForm({
   const [state, action, pending] = useActionState(addAgendaItem, initialActionState);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // Reset only after a successful save – on a validation error the typed
+  // values must stay, otherwise the user has to start over.
+  useEffect(() => {
+    if (state.ok) formRef.current?.reset();
+  }, [state]);
+
   return (
-    <form
-      ref={formRef}
-      action={(fd) => {
-        action(fd);
-        formRef.current?.reset();
-      }}
-      className="flex flex-col gap-3"
-    >
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
       <input type="hidden" name="kv" value={kv} />
       <input type="hidden" name="resolutionId" value={resolutionId} />
       <TopFields defaultQuorum={defaultQuorum} defaultMehrheit={defaultMehrheit} />
@@ -132,14 +131,14 @@ function TopCard({
   if (!editing) {
     return (
       <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
               TOP {top.ordinal}
             </div>
-            <h3 className="font-bold mt-1">{top.titel}</h3>
+            <h3 className="font-bold mt-1 break-words">{top.titel}</h3>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2">
             <button type="button" className="drk-btn-secondary" onClick={() => setEditing(true)}>
               Bearbeiten
             </button>
@@ -152,7 +151,7 @@ function TopCard({
                 className="drk-btn-secondary"
                 disabled={deletePending}
                 onClick={(e) => {
-                  if (!confirm(`TOP "${top.titel}" entfernen?`)) e.preventDefault();
+                  if (!confirm(`TOP "${top.titel}" entfernen? Zugeordnete Anlagen werden mit entfernt.`)) e.preventDefault();
                 }}
               >
                 Entfernen
@@ -320,6 +319,9 @@ function TopFields({
             defaultValue={defaultQuorum}
             className="drk-input"
           />
+          <p className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+            Anteil der Stimmberechtigten, die abstimmen müssen. Enthaltungen zählen mit.
+          </p>
         </div>
         <div>
           <label className="drk-label" htmlFor={`${uid}-mehrheit`}>Erforderliche Mehrheit</label>
@@ -328,6 +330,9 @@ function TopFields({
             <option value="two_thirds">Zwei Drittel</option>
             <option value="three_quarters">Drei Viertel</option>
           </select>
+          <p className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+            Bezogen auf Ja- und Nein-Stimmen. Enthaltungen zählen hier nicht.
+          </p>
         </div>
       </div>
     </>

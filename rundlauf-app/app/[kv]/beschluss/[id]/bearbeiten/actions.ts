@@ -78,6 +78,13 @@ export async function updateResolutionMeta(
   if (Number.isNaN(fristEnde.getTime())) {
     return { ok: false, message: "Ungültiges Fristdatum" };
   }
+  const minDate = new Date(Date.now() + MIN_FRIST_DAYS * 24 * 60 * 60 * 1000);
+  if (fristEnde.getTime() < minDate.getTime()) {
+    return {
+      ok: false,
+      message: `Die Frist muss mindestens ${MIN_FRIST_DAYS} Tage in der Zukunft liegen (§ 21 Abs. 6 Satzung).`,
+    };
+  }
 
   await db
     .update(resolutions)

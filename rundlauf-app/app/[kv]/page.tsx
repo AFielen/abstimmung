@@ -6,7 +6,7 @@ import {
   computeAgendaItemResult,
   type ResolutionResult,
 } from "@/lib/resolution";
-import { statusBadgeClass, statusLabel } from "@/lib/format";
+import { formatDateTime, statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { ResolutionStatus } from "./_components/resolution-status";
 
@@ -164,6 +164,7 @@ export default async function TenantDashboard({
 
   return (
     <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Umlaufverfahren</h1>
       <Section title={`Laufend (${running.length})`}>
         {running.length === 0 ? (
           <Empty>Aktuell keine laufenden Umlaufverfahren.</Empty>
@@ -236,7 +237,7 @@ function ResolutionList({
                 <div className="font-bold break-words">{title}</div>
                 <div className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
                   {r.topCount} TOP{r.topCount === 1 ? "" : "s"} · Frist:{" "}
-                  {new Date(r.fristEnde).toLocaleString("de-DE")}
+                  {formatDateTime(r.fristEnde)}
                 </div>
               </div>
               <span className={statusBadgeClass(r.status)}>

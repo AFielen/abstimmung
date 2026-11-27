@@ -268,6 +268,22 @@ body {
   font-weight: 600;
 }
 
+.drk-badge-neutral {
+  background: #eef0f2;
+  color: #374151;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Aktiver Navigationspunkt (TenantNav setzt aria-current="page"). */
+.drk-btn-secondary[aria-current="page"] {
+  background: var(--drk-bg);
+  color: var(--drk);
+  font-weight: 600;
+}
+
 .drk-badge-warning {
   background: var(--warning-bg);
   color: #b45309;

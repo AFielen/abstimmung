@@ -26,7 +26,7 @@ export default async function MemberImportPage({
       </div>
 
       <section className="drk-card">
-        <h2 className="text-xl font-bold mb-2">Mitglieder importieren</h2>
+        <h1 className="text-2xl font-bold mb-2">Mitglieder importieren</h1>
         <p className="text-sm mb-4" style={{ color: "var(--text-light)" }}>
           Lade eine <strong>CSV-</strong> oder <strong>Excel-Datei (.xlsx)</strong> mit
           deinen Gremiumsmitgliedern hoch. Erforderlich ist eine Spalte{" "}

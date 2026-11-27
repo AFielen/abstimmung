@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { publishResolution } from "./actions";
 import type { DraftMember } from "./draft-types";
 import { Feedback, initialActionState } from "./feedback";
+import { roleLabel } from "@/lib/format";
 
 export function EligibilitySection({
   kv,
@@ -46,7 +47,19 @@ export function EligibilitySection({
         Stimmberechtigte ({selected.size} von {members.length})
       </h2>
 
-      <form action={action} className="flex flex-col gap-4">
+      <form
+        action={action}
+        onSubmit={(e) => {
+          if (
+            !confirm(
+              `Verfahren jetzt eröffnen und ${selected.size} Stimmberechtigte einladen?\n\nDanach sind TOPs, Anlagen und Frist nicht mehr änderbar; die Liste der Stimmberechtigten wird eingefroren.`,
+            )
+          ) {
+            e.preventDefault();
+          }
+        }}
+        className="flex flex-col gap-4"
+      >
         <input type="hidden" name="kv" value={kv} />
         <input type="hidden" name="resolutionId" value={resolutionId} />
         {Array.from(selected).map((id) => (
@@ -100,7 +113,7 @@ export function EligibilitySection({
                       className="text-xs ml-2"
                       style={{ color: "var(--text-light)" }}
                     >
-                      {m.email} · {m.role}
+                      {m.email} · {roleLabel(m.role)}
                     </span>
                     {isInvited ? (
                       <span

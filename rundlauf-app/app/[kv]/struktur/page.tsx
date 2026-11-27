@@ -40,7 +40,7 @@ export default async function StrukturPage({
   return (
     <div className="flex flex-col gap-6">
       <section className="drk-card">
-        <h2 className="text-xl font-bold mb-1">Organisationen &amp; Gremien</h2>
+        <h1 className="text-2xl font-bold mb-1">Organisationen &amp; Gremien</h1>
         <p className="text-sm" style={{ color: "var(--text-light)" }}>
           Bilde die Struktur deines Kreisverbands ab: Mutter-Verein, Tochtergesellschaften
           und deren Gremien (Präsidium, Aufsichtsrat, Beirat, …).

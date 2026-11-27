@@ -24,6 +24,8 @@ export function ResolutionStatus({
   variant = "full",
 }: ResolutionStatusProps) {
   const isCompact = variant === "compact";
+  // While the vote is running, nothing is "missed" yet – show neutral wording.
+  const running = closure === null;
   return (
     <div className={isCompact ? "" : "border-t pt-4"} style={isCompact ? {} : { borderColor: "var(--border)" }}>
       <div className="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
@@ -41,19 +43,25 @@ export function ResolutionStatus({
         <Stat
           label="Abgegeben"
           value={`${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`}
-          tone={result.quorumReached ? "success" : "warning"}
+          tone={result.quorumReached ? "success" : running ? "neutral" : "warning"}
           compact={isCompact}
         />
         <Stat
           label="Quorum"
-          value={result.quorumReached ? "Erreicht" : `Min. ${quorumPct} %`}
-          tone={result.quorumReached ? "success" : "warning"}
+          value={
+            result.quorumReached
+              ? "Erreicht"
+              : running
+                ? `Noch offen (mind. ${quorumPct} %)`
+                : `Verfehlt (mind. ${quorumPct} %)`
+          }
+          tone={result.quorumReached ? "success" : running ? "neutral" : "warning"}
           compact={isCompact}
         />
         <Stat
           label="Mehrheit"
-          value={result.majorityReached ? "Erreicht" : "Verfehlt"}
-          tone={result.majorityReached ? "success" : "warning"}
+          value={result.majorityReached ? "Erreicht" : running ? "Noch offen" : "Verfehlt"}
+          tone={result.majorityReached ? "success" : running ? "neutral" : "warning"}
           compact={isCompact}
         />
       </div>

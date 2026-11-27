@@ -5,7 +5,7 @@ import {
   parseOptions,
   type ResolutionResult,
 } from "@/lib/resolution";
-import { formatBytes } from "./format";
+import { formatBytes, formatDateTime } from "./format";
 import { stripMarkdown } from "./markdown";
 
 type EligibleSnapshot = {
@@ -85,14 +85,14 @@ export function buildProtokollPdf(input: ProtokollInput): Buffer {
   y += 4;
   if (input.resolution.abgeschlossenAm) {
     doc.text(
-      `Abgeschlossen: ${new Date(input.resolution.abgeschlossenAm).toLocaleString("de-DE")}`,
+      `Abgeschlossen: ${formatDateTime(input.resolution.abgeschlossenAm)}`,
       MARGIN,
       y,
     );
     y += 4;
   }
   if (input.createdBy) {
-    doc.text(`Anlage: ${input.createdBy.name ?? input.createdBy.email}`, MARGIN, y);
+    doc.text(`Angelegt von: ${input.createdBy.name ?? input.createdBy.email}`, MARGIN, y);
     y += 4;
   }
   y += 4;
@@ -257,7 +257,7 @@ function drawAgendaItem(
       return [
         e.nameSnapshot,
         v ? optionLabel(v.optionId) : "—",
-        v ? new Date(v.updatedAt).toLocaleString("de-DE") : "—",
+        v ? formatDateTime(v.updatedAt) : "—",
       ];
     }),
   ];
@@ -266,7 +266,10 @@ function drawAgendaItem(
 
   // Ergebnis
   y = ensureSpace(doc, y, 40);
-  const ergebnisRows = [
+  const withdrawn = input.resolution.status === "zurueckgezogen";
+  const ergebnisRows = withdrawn
+    ? [["Verfahren", "Zurückgezogen – keine Auszählung"]]
+    : [
     [
       "Abgegebene Stimmen",
       `${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`,

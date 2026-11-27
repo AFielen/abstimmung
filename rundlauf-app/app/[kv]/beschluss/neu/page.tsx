@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bodies, memberships, organizations } from "@/lib/db/schema";
 import { MIN_FRIST_DAYS } from "@/lib/resolution";
@@ -42,7 +42,7 @@ export default async function NewResolutionPage({
       .where(
         and(
           eq(memberships.tenantId, ctx.tenant.id),
-          eq(memberships.status, "active"),
+          inArray(memberships.status, ["active", "invited"]),
         ),
       )
   ).length;
@@ -67,7 +67,7 @@ export default async function NewResolutionPage({
       <div className="drk-card max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-3">Neues Umlaufverfahren</h1>
         <p className="mb-4" style={{ color: "var(--text-light)" }}>
-          Der KV hat zu wenige aktive Mitglieder. Lade zuerst Mitglieder ein.
+          Für ein Umlaufverfahren braucht es mindestens 2 Mitglieder (aktiv oder eingeladen) – aktuell {activeMemberCount}. Lade zuerst Mitglieder ein.
         </p>
         <Link href={`/${kv}/mitglieder`} className="drk-btn-primary inline-flex">
           Mitglieder einladen

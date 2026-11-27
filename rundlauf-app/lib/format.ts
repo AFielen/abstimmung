@@ -13,7 +13,17 @@ export function formatDateTime(d: Date | string): string {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Europe/Berlin",
-  });
+  }) + " Uhr";
+}
+
+export function roleLabel(role: string): string {
+  return (
+    {
+      owner: "Inhaber",
+      admin: "Administrator",
+      member: "Gremiumsmitglied",
+    }[role] ?? role
+  );
 }
 
 export function mehrheitLabel(m: string): string {
@@ -42,7 +52,7 @@ export function statusBadgeClass(s: string): string {
     {
       draft: "drk-badge-warning",
       laufend: "drk-badge-success",
-      abgeschlossen: "drk-badge-error",
+      abgeschlossen: "drk-badge-neutral",
       zurueckgezogen: "drk-badge-warning",
     }[s] ?? "drk-badge-warning"
   );

@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
 import { memberships, tenants } from "@/lib/db/schema";
+import { roleLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function HomePage() {
                       style={{ color: "var(--text-light)" }}
                     >
                       <code>/{t.slug}</code>
-                      {m ? ` · Rolle: ${m.role}` : ""}
+                      {m ? ` · Rolle: ${roleLabel(m.role)}` : ""}
                     </div>
                   </Link>
                 </li>

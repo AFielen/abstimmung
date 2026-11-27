@@ -13,8 +13,8 @@ export function AdminActions({ kv, resolutionId, pastDeadline }: Props) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
 
-  function trigger(fn: typeof closeResolution, confirmLabel: string) {
-    if (!confirm(`${confirmLabel} – bist du sicher?`)) return;
+  function trigger(fn: typeof closeResolution, confirmText: string) {
+    if (!confirm(confirmText)) return;
     const fd = new FormData();
     fd.set("kv", kv);
     fd.set("resolutionId", resolutionId);
@@ -36,8 +36,8 @@ export function AdminActions({ kv, resolutionId, pastDeadline }: Props) {
 
   const closeLabel = pastDeadline ? "Jetzt abschließen" : "Vorzeitig abschließen";
   const closeConfirm = pastDeadline
-    ? "Beschluss jetzt abschließen"
-    : "Beschluss vorzeitig abschließen";
+    ? "Verfahren jetzt abschließen? Das Ergebnis wird mit den vorliegenden Stimmen endgültig festgestellt und protokolliert. Das lässt sich nicht rückgängig machen."
+    : "Verfahren vorzeitig abschließen? Noch ausstehende Stimmen werden nicht mehr gezählt; das Ergebnis wird mit dem aktuellen Stand endgültig festgestellt. Das lässt sich nicht rückgängig machen.";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -45,13 +45,18 @@ export function AdminActions({ kv, resolutionId, pastDeadline }: Props) {
         type="button"
         onClick={() => trigger(closeResolution, closeConfirm)}
         disabled={pending}
-        className="drk-btn-primary"
+        className="drk-btn-secondary"
       >
         {closeLabel}
       </button>
       <button
         type="button"
-        onClick={() => trigger(withdrawResolution, "Beschluss zurückziehen")}
+        onClick={() =>
+          trigger(
+            withdrawResolution,
+            "Verfahren zurückziehen? Es wird ohne Auszählung beendet und als zurückgezogen protokolliert. Das lässt sich nicht rückgängig machen.",
+          )
+        }
         disabled={pending}
         className="drk-btn-secondary"
       >
