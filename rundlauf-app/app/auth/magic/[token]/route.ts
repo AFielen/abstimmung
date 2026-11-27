@@ -47,6 +47,8 @@ export async function GET(
 
   // Falls invite + tenantId → Membership aktivieren
   if (consumed.purpose === "invite" && consumed.tenantId) {
+    // Nur offene Einladungen aktivieren: ein Mitglied, das inzwischen entfernt
+    // wurde, darf sich über einen alten Einladungslink nicht reaktivieren.
     await db
       .update(memberships)
       .set({ status: "active", joinedAt: new Date() })
@@ -54,6 +56,7 @@ export async function GET(
         and(
           eq(memberships.tenantId, consumed.tenantId),
           eq(memberships.userId, userId),
+          eq(memberships.status, "invited"),
         ),
       );
 

@@ -47,6 +47,18 @@ export async function POST(
     );
   }
 
+  // Declared size first – req.formData() buffers the whole body.
+  const declared = Number(req.headers.get("content-length") ?? "0");
+  if (declared > ATTACHMENT_MAX_BYTES + 64 * 1024) {
+    return json(
+      {
+        ok: false,
+        message: `Datei größer als ${Math.round(ATTACHMENT_MAX_BYTES / 1024 / 1024)} MB.`,
+      },
+      413,
+    );
+  }
+
   let form: FormData;
   try {
     form = await req.formData();

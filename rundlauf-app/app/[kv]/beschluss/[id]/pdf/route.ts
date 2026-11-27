@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { db } from "@/lib/db";
@@ -48,6 +48,36 @@ export async function GET(
   )[0];
   if (!belongsToTenant(r, ctx.tenant.id)) {
     return new NextResponse("Beschluss nicht gefunden", { status: 404 });
+  }
+
+  // Das Protokoll enthält namentliche Einzelstimmen. Es gibt es erst nach
+  // Abschluss des Verfahrens und nur für Admins oder Stimmberechtigte dieses
+  // Umlaufs (gleiche Regel wie beim Anlagen-Download). Entwürfe bleiben für
+  // Nicht-Admins unsichtbar.
+  if (r.status === "draft" && !ctx.isAdmin) {
+    return new NextResponse("Beschluss nicht gefunden", { status: 404 });
+  }
+  if (r.status !== "abgeschlossen" && r.status !== "zurueckgezogen") {
+    return new NextResponse("Protokoll erst nach Abschluss des Verfahrens verfügbar", {
+      status: 409,
+    });
+  }
+  if (!ctx.isAdmin) {
+    const ev = (
+      await db
+        .select({ id: eligibleVoters.id })
+        .from(eligibleVoters)
+        .where(
+          and(
+            eq(eligibleVoters.resolutionId, r.id),
+            eq(eligibleVoters.userId, ctx.user.id),
+          ),
+        )
+        .limit(1)
+    )[0];
+    if (!ev) {
+      return new NextResponse("Kein Zugriff", { status: 403 });
+    }
   }
 
   const tops = await db

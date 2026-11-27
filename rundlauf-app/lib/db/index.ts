@@ -47,3 +47,10 @@ export const db = new Proxy({} as DbType, {
 });
 
 export { schema };
+
+/** Postgres unique_violation (SQLSTATE 23505), also when wrapped in drizzle's DrizzleQueryError. */
+export function isUniqueViolation(err: unknown): boolean {
+  const direct = (err as { code?: unknown } | null)?.code;
+  const nested = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
+  return direct === "23505" || nested === "23505";
+}
