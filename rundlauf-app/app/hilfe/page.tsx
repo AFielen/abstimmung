@@ -115,7 +115,7 @@ export default function HilfePage() {
           </div>
         </div>
         <p className="mt-4 text-sm" style={{ color: "var(--text-light)" }}>
-          Hinweis: Die Begriffe „Kreisverband", „Landesverband" und „Mandant"
+          Hinweis: Die Begriffe „Kreisverband“, „Landesverband“ und „Mandant“
           meinen technisch dasselbe – einen abgegrenzten Bereich im System für
           deinen Verband.
         </p>
@@ -181,7 +181,7 @@ export default function HilfePage() {
           <li>
             <div>
               <strong>Stimmberechtigte als Snapshot festlegen</strong> – beim
-              Eröffnen wird die Liste der Berechtigten „eingefroren". Spätere
+              Eröffnen wird die Liste der Berechtigten „eingefroren“. Spätere
               Mitgliedsänderungen wirken nicht rückwirkend auf laufende Verfahren.
             </div>
           </li>
@@ -268,10 +268,10 @@ export default function HilfePage() {
           <li><div><strong>Beschluss-Übersicht ansehen:</strong> Titel, Beschreibung, Fristende und die Liste aller Tagesordnungspunkte.</div></li>
           <li><div><strong>Anlagen sichten</strong>, falls vorhanden (z. B. PDFs prüfen).</div></li>
           <li><div><strong>Pro Tagesordnungspunkt eine Option wählen.</strong></div></li>
-          <li><div><strong>Stimme abgeben.</strong> Im Modus „fest" erscheint vorher ein Bestätigungsdialog.</div></li>
+          <li><div><strong>Stimme abgeben.</strong> Im Modus „fest“ erscheint vorher ein Bestätigungsdialog.</div></li>
           <li>
             <div>
-              <strong>Im Modus „änderbar":</strong> Du kannst bis zum Fristende
+              <strong>Im Modus „änderbar“:</strong> Du kannst bis zum Fristende
               zurückkehren und deine Auswahl anpassen – nutze dafür einen
               neuen Magic-Link oder bleibe eingeloggt.
             </div>
@@ -388,7 +388,7 @@ export default function HilfePage() {
           <details className="border rounded-lg p-3" style={{ borderColor: "var(--border)" }}>
             <summary className="font-semibold cursor-pointer">Kann ich meine Stimme zurückziehen oder ändern?</summary>
             <p className="mt-2 text-sm">
-              Nur im Modus „änderbar" und nur bis zum Fristende. Im Modus „fest"
+              Nur im Modus „änderbar“ und nur bis zum Fristende. Im Modus „fest“
               ist die Stimme nach Abgabe unwiderruflich.
             </p>
           </details>
@@ -432,7 +432,7 @@ export default function HilfePage() {
             <summary className="font-semibold cursor-pointer">Kann ich von mehreren Geräten abstimmen?</summary>
             <p className="mt-2 text-sm">
               Ja, solange du dich mit deiner E-Mail-Adresse einloggst. Es zählt
-              immer die zuletzt abgegebene Stimme – im Modus „fest" allerdings
+              immer die zuletzt abgegebene Stimme – im Modus „fest“ allerdings
               nur die erste Abgabe.
             </p>
           </details>
