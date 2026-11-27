@@ -217,10 +217,10 @@ docker compose start rundlauf rundlauf-retention rundlauf-reminders rundlauf-aut
 - [x] Protokoll-Archiv beschreibbar (Volume-Owner), Zeitzone Europe/Berlin
 - [x] Security-Review: Protokoll-Zugriff, Mail-Escaping, Einladungs-Reaktivierung, Magic-Link-Drosselung, Quorum-Arithmetik, atomarer Abschluss
 - [x] Unit-Tests (`npm test`) und CI auf PRs
-- [ ] Deploy der PRs auf den Produktiv-VPS (als root) und Post-Deploy-Check: `/api/health`, Dump im Backup-Volume, Protokoll-Archiv schreibbar
+- [x] Deploy auf den Produktiv-VPS (2026-11-27, Stand `fea6258`) und Post-Deploy-Check: `/api/health` 200, erster Dump im Backup-Volume (13 Tabellen, `pg_restore --list` ok), Protokoll-Archiv beschreibbar (uid 1001), alle sechs Container healthy mit `cap_drop: [ALL]`, Cron-Erstläufe sauber
 - [ ] Plattform: Off-site-Backup-Credentials in `/srv/ops/.env`, erster Restore-Test
 - [ ] Plattform: externes Uptime-Monitoring für `rundlauf.drk-abstimmung.de`
 - [ ] DSB: AVV Hetzner/Mailjet bestätigt, `/datenschutz` geprüft, Kontakt im Runbook
 - [ ] Fachlich: Satzungsgrundlage (§ 21 Abs. 6, § 22 Abs. 5) mit Präsidium bestätigt, Quorum-/Mehrheitsvorgaben je Gremium gepflegt
 
-*Stand: 2026-11-27.*
+*Stand: 2026-11-27, nach Produktiv-Deploy.*

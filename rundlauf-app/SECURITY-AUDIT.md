@@ -55,5 +55,17 @@ ohne Informationsabfluss, keine Account-Enumeration über Login-Antworten.
   Reaktivierungsschutz, vorzeitiger Abschluss per UI, Cron-Skripte,
   Dump + Restore.
 
-*Nächste Prüfung: nach dem Produktiv-Deploy (Post-Deploy-Checks in
-`APP-SECURITY.md` §10) und turnusmäßig quartalsweise (VPS-SECURITY §10).*
+## Post-Deploy-Prüfung (2026-11-27, Produktion auf `fea6258`)
+
+- Migrationen im Entrypoint durchgelaufen, Next.js 16.4.6, keine Fehler im App-Log.
+- `rundlauf`, drei Cron-Container und `rundlauf-db-backup` laufen mit `cap_drop: [ALL]`
+  und `no-new-privileges`; die DB mit dem reduzierten Capability-Set; kein
+  Default-DB-Passwort; `TZ=Europe/Berlin` wirksam.
+- Protokoll-Volume neu angelegt, Owner uid 1001, beschreibbar.
+- Erster Dump `rundlauf-20261127T090823Z.dump` (584 KB, 13 `TABLE DATA`-Einträge).
+- Live über Caddy: `/api/health` 200, öffentliche Seiten 200, ungültiger
+  Magic-Link → `/login?error=invalid`, anonymer Mandantenzugriff → `/login`,
+  Security-Header gesetzt, kein `X-Powered-By`.
+- Datenbestand unverändert (3 Mandanten, 22 Nutzer, 2 Beschlüsse, 16 Stimmen).
+
+*Nächste Prüfung: turnusmäßig quartalsweise (VPS-SECURITY §10).*
