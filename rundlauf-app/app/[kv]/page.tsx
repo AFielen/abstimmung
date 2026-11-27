@@ -11,6 +11,7 @@ import { requireTenantContext } from "@/lib/tenant";
 import { ResolutionStatus } from "./_components/resolution-status";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Beschlüsse" };
 
 type TopResult = {
   topId: string;

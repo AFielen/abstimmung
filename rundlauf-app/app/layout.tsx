@@ -3,7 +3,10 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DRK Rundlaufbeschlüsse",
+  title: {
+    default: "DRK Rundlaufbeschlüsse",
+    template: "%s – DRK Rundlaufbeschlüsse",
+  },
   description:
     "Digitales Umlaufverfahren für Präsidien des Deutschen Roten Kreuzes",
   icons: { icon: "/favicon.svg" },
@@ -53,12 +56,13 @@ export default function RootLayout({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="DRK Logo" width={42} height={42} />
             <div>
-              <h1 className="text-[1.4rem] font-bold leading-tight">
+              {/* Site title is not a heading: each page brings its own h1. */}
+              <span className="block text-[1.4rem] font-bold leading-tight">
                 DRK Rundlaufbeschlüsse
-              </h1>
-              <div className="text-[0.8rem] opacity-85">
+              </span>
+              <span className="block text-[0.8rem]">
                 Umlaufverfahren für Präsidien
-              </div>
+              </span>
             </div>
           </Link>
 
@@ -67,6 +71,7 @@ export default function RootLayout({
               href="/hilfe"
               className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 transition-colors"
               title="Hilfe"
+              aria-label="Hilfe"
             >
               <HelpIcon />
             </Link>
@@ -88,19 +93,19 @@ export default function RootLayout({
           <div className="text-sm mb-3" style={{ color: "var(--text-light)" }}>
             Kreisverband St&auml;dteRegion Aachen e.V.
           </div>
-          <div className="text-xs mb-3" style={{ color: "var(--text-light)" }}>
-            <Link href="/impressum" className="hover:underline" style={{ color: "inherit" }}>
+          <nav aria-label="Rechtliches und Hilfe" className="text-sm mb-3" style={{ color: "var(--text-light)" }}>
+            <Link href="/impressum" className="inline-block px-2 py-2 hover:underline" style={{ color: "inherit" }}>
               Impressum
             </Link>
             {" · "}
-            <Link href="/datenschutz" className="hover:underline" style={{ color: "inherit" }}>
+            <Link href="/datenschutz" className="inline-block px-2 py-2 hover:underline" style={{ color: "inherit" }}>
               Datenschutz
             </Link>
             {" · "}
-            <Link href="/hilfe" className="hover:underline" style={{ color: "inherit" }}>
+            <Link href="/hilfe" className="inline-block px-2 py-2 hover:underline" style={{ color: "inherit" }}>
               Hilfe
             </Link>
-          </div>
+          </nav>
           <div
             className="text-xs flex items-center justify-center gap-1"
             style={{ color: "var(--text-light)" }}

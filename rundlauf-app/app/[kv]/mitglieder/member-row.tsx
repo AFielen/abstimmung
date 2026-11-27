@@ -91,6 +91,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
 
         {canModify ? (
           <select
+            aria-label={`Rolle von ${name ?? email}`}
             value={role}
             onChange={(e) => handleRoleChange(e.target.value)}
             disabled={pending}

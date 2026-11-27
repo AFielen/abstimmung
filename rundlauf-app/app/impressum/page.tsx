@@ -1,4 +1,4 @@
-export const metadata = { title: "Impressum – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Impressum" };
 
 export default function ImpressumPage() {
   return (

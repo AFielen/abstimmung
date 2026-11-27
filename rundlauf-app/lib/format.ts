@@ -7,6 +7,15 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+// Immer deutsche Ortszeit – unabhängig von TZ des Prozesses oder Browsers.
+export function formatDateTime(d: Date | string): string {
+  return new Date(d).toLocaleString("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Berlin",
+  });
+}
+
 export function mehrheitLabel(m: string): string {
   return (
     {

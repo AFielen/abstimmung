@@ -59,7 +59,7 @@ export default async function StrukturPage({
                 <BodyRow key={b.id} kv={kv} body={b} />
               ))}
               {(bodiesByOrg.get(org.id) ?? []).length === 0 ? (
-                <li className="text-sm" style={{ color: "var(--text-muted)" }}>
+                <li className="text-sm" style={{ color: "var(--text-light)" }}>
                   Noch keine Gremien.
                 </li>
               ) : null}

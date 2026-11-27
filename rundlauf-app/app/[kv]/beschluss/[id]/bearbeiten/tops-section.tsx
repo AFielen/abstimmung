@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { addAgendaItem, deleteAgendaItem, updateAgendaItem } from "./actions";
 import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
@@ -247,11 +247,13 @@ function TopFields({
   defaultQuorum: number;
   defaultMehrheit: "simple" | "two_thirds" | "three_quarters";
 }) {
+  const uid = useId();
   return (
     <>
       <div>
-        <label className="drk-label">Titel <span style={{ color: "var(--drk)" }}>*</span></label>
+        <label className="drk-label" htmlFor={`${uid}-titel`}>Titel <span style={{ color: "var(--drk)" }}>*</span></label>
         <input
+          id={`${uid}-titel`}
           name="titel"
           required
           maxLength={200}
@@ -283,8 +285,9 @@ function TopFields({
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="drk-label">Finanzielle Auswirkungen</label>
+          <label className="drk-label" htmlFor={`${uid}-finanzen`}>Finanzielle Auswirkungen</label>
           <input
+            id={`${uid}-finanzen`}
             name="finanzielleAuswirkungen"
             defaultValue={defaultFinanzen}
             maxLength={2000}
@@ -293,8 +296,9 @@ function TopFields({
           />
         </div>
         <div>
-          <label className="drk-label">Auskunft erteilen</label>
+          <label className="drk-label" htmlFor={`${uid}-auskunft`}>Auskunft erteilen</label>
           <input
+            id={`${uid}-auskunft`}
             name="auskunftErteilen"
             defaultValue={defaultAuskunft}
             maxLength={500}
@@ -305,8 +309,9 @@ function TopFields({
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="drk-label">Quorum (%) <span style={{ color: "var(--drk)" }}>*</span></label>
+          <label className="drk-label" htmlFor={`${uid}-quorum`}>Quorum (%) <span style={{ color: "var(--drk)" }}>*</span></label>
           <input
+            id={`${uid}-quorum`}
             name="quorumPct"
             type="number"
             min={50}
@@ -317,8 +322,8 @@ function TopFields({
           />
         </div>
         <div>
-          <label className="drk-label">Erforderliche Mehrheit</label>
-          <select name="mehrheit" defaultValue={defaultMehrheit} className="drk-input">
+          <label className="drk-label" htmlFor={`${uid}-mehrheit`}>Erforderliche Mehrheit</label>
+          <select id={`${uid}-mehrheit`} name="mehrheit" defaultValue={defaultMehrheit} className="drk-input">
             <option value="simple">Einfache Mehrheit (&gt; 50 %)</option>
             <option value="two_thirds">Zwei Drittel</option>
             <option value="three_quarters">Drei Viertel</option>

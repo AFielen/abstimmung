@@ -143,6 +143,7 @@ export async function VoterStatusPanel({
           className="mt-4 h-2 rounded-full overflow-hidden"
           style={{ background: "var(--border)" }}
           role="progressbar"
+          aria-label="Anteil der abgegebenen Stimmen"
           aria-valuenow={Math.round(pct)}
           aria-valuemin={0}
           aria-valuemax={100}
@@ -220,7 +221,7 @@ function SubHeader({
       >
         {label}
       </span>
-      <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
+      <span className="text-xs tabular-nums" style={{ color: "var(--text-light)" }}>
         ({count})
       </span>
     </div>

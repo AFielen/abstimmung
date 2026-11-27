@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Hilfe – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Hilfe" };
 
 export default function HilfePage() {
   return (

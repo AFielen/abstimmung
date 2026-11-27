@@ -26,6 +26,7 @@ import { ResolutionStatus } from "../../_components/resolution-status";
 import { CollapsibleMarkdown } from "../../_components/collapsible-markdown";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Beschluss" };
 
 export default async function ResolutionPage({
   params,
@@ -196,6 +197,7 @@ export default async function ResolutionPage({
                 href={`/${kv}/beschluss/${r.id}/pdf`}
                 className="drk-btn-secondary"
                 target="_blank"
+                prefetch={false}
               >
                 Protokoll-PDF
               </Link>

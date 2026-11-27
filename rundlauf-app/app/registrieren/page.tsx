@@ -1,6 +1,6 @@
 import { LoginForm } from "../login/login-form";
 
-export const metadata = { title: "Registrieren – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Registrieren" };
 
 export default function RegisterPage() {
   return (

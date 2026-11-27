@@ -8,6 +8,7 @@ import { MemberRow } from "./member-row";
 import { ResendAllButton } from "./resend-all-button";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Mitglieder" };
 
 export default async function MembersPage({
   params,

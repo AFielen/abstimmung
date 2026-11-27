@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/tenant";
 import { ImportForm } from "./import-form";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Mitglieder importieren" };
 
 export default async function MemberImportPage({
   params,

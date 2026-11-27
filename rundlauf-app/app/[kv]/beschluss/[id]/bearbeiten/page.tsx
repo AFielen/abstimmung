@@ -17,6 +17,7 @@ import { requireAdmin } from "@/lib/tenant";
 import { DraftEditor, type DraftMember, type DraftTop, type DraftAttachment } from "./draft-editor";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Entwurf bearbeiten" };
 
 export default async function DraftEditPage({
   params,
