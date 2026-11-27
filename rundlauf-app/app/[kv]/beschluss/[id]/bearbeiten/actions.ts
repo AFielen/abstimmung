@@ -52,7 +52,7 @@ async function loadDraft(kv: string, resolutionId: string): Promise<LoadDraftRes
 const metaSchema = z.object({
   kv: z.string().min(1),
   resolutionId: z.string().uuid(),
-  betreff: z.string().max(200).optional(),
+  betreff: z.string().max(200, "Der Betreff darf höchstens 200 Zeichen lang sein").optional(),
   fristEnde: z.string().min(1),
   voteChangeMode: z.enum(["aenderbar", "fest"]),
 });
@@ -117,11 +117,17 @@ export async function updateResolutionMeta(
 const addTopSchema = z.object({
   kv: z.string().min(1),
   resolutionId: z.string().uuid(),
-  titel: z.string().min(3, "Titel zu kurz").max(200),
-  beschlussvorschlag: z.string().min(1, "Beschlussvorschlag erforderlich").max(20000),
-  sachlage: z.string().max(20000).optional(),
-  finanzielleAuswirkungen: z.string().max(2000).optional(),
-  auskunftErteilen: z.string().max(500).optional(),
+  titel: z
+    .string()
+    .min(3, "Bitte einen Titel mit mindestens 3 Zeichen eingeben")
+    .max(200, "Der Titel darf höchstens 200 Zeichen lang sein"),
+  beschlussvorschlag: z
+    .string()
+    .min(1, "Bitte den Beschlussvorschlag eintragen")
+    .max(20000, "Der Beschlussvorschlag ist zu lang (max. 20.000 Zeichen)"),
+  sachlage: z.string().max(20000, "Die Sachlage ist zu lang (max. 20.000 Zeichen)").optional(),
+  finanzielleAuswirkungen: z.string().max(2000, "Höchstens 2.000 Zeichen").optional(),
+  auskunftErteilen: z.string().max(500, "Höchstens 500 Zeichen").optional(),
   quorumPct: z.coerce.number().int().min(50).max(100),
   mehrheit: z.enum(["simple", "two_thirds", "three_quarters"]),
 });
