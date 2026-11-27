@@ -183,10 +183,12 @@ export function ImportForm({ kv }: { kv: string }) {
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full min-w-[560px] text-sm border-collapse">
             <thead>
               <tr style={{ background: "var(--bg)" }}>
-                <th className="text-left p-2 w-8"></th>
+                <th className="text-left p-2 w-10">
+                  <span className="sr-only">Auswahl</span>
+                </th>
                 <th className="text-left p-2">E-Mail</th>
                 <th className="text-left p-2">Name</th>
                 <th className="text-left p-2">Rolle</th>
@@ -206,6 +208,8 @@ export function ImportForm({ kv }: { kv: string }) {
                     <td className="p-2 align-top">
                       <input
                         type="checkbox"
+                        className="w-5 h-5"
+                        aria-label={`${row.email} importieren`}
                         checked={checked}
                         onChange={() => toggleRow(i)}
                         disabled={!can}
