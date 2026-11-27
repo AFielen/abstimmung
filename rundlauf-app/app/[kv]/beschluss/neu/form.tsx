@@ -123,7 +123,7 @@ export function CreateForm({
       ) : null}
 
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Lege an …" : "Entwurf anlegen und Inhalte erfassen"}
+        {pending ? "Wird angelegt …" : "Entwurf anlegen und Inhalte erfassen"}
       </button>
 
       <p className="text-xs" style={{ color: "var(--text-light)" }}>

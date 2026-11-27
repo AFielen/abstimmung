@@ -8,6 +8,7 @@ export function Feedback({ state }: { state: ActionState }) {
   if (!state.message) return null;
   return (
     <div
+      role={state.ok ? "status" : "alert"}
       className="rounded-lg p-3 text-sm"
       style={{
         background: state.ok ? "var(--success-bg)" : "var(--drk-bg)",

@@ -43,7 +43,6 @@ export default async function MembersPage({
           <Link
             href={`/${kv}/mitglieder/import`}
             className="drk-btn-secondary"
-            style={{ padding: "0.5rem 0.9rem", minHeight: 0 }}
           >
             CSV/Excel-Import
           </Link>

@@ -105,7 +105,7 @@ function NewTopForm({
       <Feedback state={state} />
       <div className="flex gap-2">
         <button type="submit" className="drk-btn-primary" disabled={pending}>
-          {pending ? "Lege an …" : "TOP speichern"}
+          {pending ? "Wird angelegt …" : "TOP speichern"}
         </button>
         <button type="button" className="drk-btn-secondary" onClick={onCancel}>
           Abbrechen
@@ -218,7 +218,7 @@ function TopCard({
         <Feedback state={updateState} />
         <div className="flex gap-2">
           <button type="submit" className="drk-btn-primary" disabled={updatePending}>
-            {updatePending ? "Speichere …" : "Änderungen speichern"}
+            {updatePending ? "Wird gespeichert …" : "Änderungen speichern"}
           </button>
           <button type="button" className="drk-btn-secondary" onClick={() => setEditing(false)}>
             Abbrechen

@@ -51,7 +51,7 @@ export function CreateOrganizationForm({ kv }: { kv: string }) {
         </div>
       ) : null}
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Lege an …" : "Organisation anlegen"}
+        {pending ? "Wird angelegt …" : "Organisation anlegen"}
       </button>
     </form>
   );

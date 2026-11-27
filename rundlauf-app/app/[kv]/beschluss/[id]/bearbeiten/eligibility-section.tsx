@@ -141,7 +141,7 @@ export function EligibilitySection({
           className="drk-btn-primary"
           disabled={pending || selected.size < 2 || !hasTops}
         >
-          {pending ? "Eröffne …" : "Verfahren eröffnen und einladen"}
+          {pending ? "Wird eröffnet …" : "Verfahren eröffnen und einladen"}
         </button>
 
         {!hasTops ? (

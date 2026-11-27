@@ -170,7 +170,7 @@ export default async function ResolutionPage({
   return (
     <div className="flex flex-col gap-6">
       <header className="drk-card">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
             {bodyInfo ? (
@@ -182,9 +182,15 @@ export default async function ResolutionPage({
             <h1 className="text-2xl font-bold mt-1 break-words">{title}</h1>
             <div className="text-sm mt-1" style={{ color: "var(--text-light)" }}>
               Frist: {formatDateTime(r.fristEnde)} ·{" "}
-              {past ? "abgelaufen" : "noch offen"}
+              {r.status === "zurueckgezogen"
+                ? `zurückgezogen${r.abgeschlossenAm ? ` am ${formatDateTime(r.abgeschlossenAm)}` : ""}`
+                : r.status === "abgeschlossen"
+                  ? `abgeschlossen${r.abgeschlossenAm ? ` am ${formatDateTime(r.abgeschlossenAm)}` : ""}`
+                  : past
+                    ? "Frist abgelaufen"
+                    : "läuft"}
               {" · "}
-              {r.voteChangeMode === "fest" ? "Feste Stimmen" : "Änderbar bis Frist"}
+              {r.voteChangeMode === "fest" ? "Stimmen unwiderruflich" : "Stimmen änderbar bis zur Frist"}
               {" · "}
               {tops.length} TOP{tops.length === 1 ? "" : "s"}
               {" · "}
@@ -323,7 +329,11 @@ export default async function ResolutionPage({
             {canVote ? (
               <div className="mt-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
                 <h3 className="font-bold mb-2">Deine Stimme</h3>
+                <p className="text-xs mb-3" style={{ color: "var(--text-light)" }}>
+                  Deine Stimme wird namentlich erfasst und erscheint nach Abschluss im Protokoll.
+                </p>
                 <VoteForm
+                  legend={`TOP ${top.ordinal}: ${top.titel}`}
                   kv={kv}
                   resolutionId={r.id}
                   agendaItemId={top.id}
@@ -404,7 +414,7 @@ function AttachmentList({
             className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 hover:bg-gray-50"
             style={{ borderColor: "var(--border)" }}
           >
-            <span className="font-medium" style={{ color: "var(--drk)" }}>
+            <span className="font-medium break-all" style={{ color: "var(--drk)" }}>
               📄 {a.filename}
             </span>
             <span className="text-xs" style={{ color: "var(--text-light)" }}>

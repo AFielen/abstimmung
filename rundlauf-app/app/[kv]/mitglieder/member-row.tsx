@@ -128,7 +128,6 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
             onClick={handleResend}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Einladung erneut senden
           </button>
@@ -140,7 +139,6 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
             onClick={handleRemove}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Entfernen
           </button>
@@ -149,6 +147,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
 
       {feedback ? (
         <div
+          role={feedback.ok ? "status" : "alert"}
           className="w-full text-sm rounded p-2"
           style={{
             background: feedback.ok ? "var(--success-bg)" : "var(--drk-bg)",

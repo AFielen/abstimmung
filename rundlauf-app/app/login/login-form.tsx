@@ -6,13 +6,14 @@ import { requestMagicLink, type LoginActionState } from "./actions";
 
 const initialState: LoginActionState = { ok: false };
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(requestMagicLink, initialState);
 
   if (state.ok) {
     return (
       <div className="drk-fade-in">
         <div
+          role="status"
           className="rounded-lg p-4 mb-4"
           style={{ background: "var(--success-bg)", color: "var(--success)" }}
         >
@@ -31,6 +32,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div>
         <label className="drk-label" htmlFor="email">
           E-Mail-Adresse
@@ -47,6 +49,7 @@ export function LoginForm() {
       </div>
       {state.message && !state.ok ? (
         <div
+          role="alert"
           className="rounded-lg p-3 text-sm"
           style={{ background: "var(--drk-bg)", color: "var(--drk)" }}
         >
@@ -54,7 +57,7 @@ export function LoginForm() {
         </div>
       ) : null}
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Sende Link …" : "Magic-Link senden"}
+        {pending ? "Wird gesendet …" : "Anmelde-Link senden"}
       </button>
     </form>
   );

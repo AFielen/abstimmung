@@ -7,11 +7,16 @@ import { roleLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ abgemeldet?: string }>;
+}) {
   const user = await getCurrentUser();
+  const { abgemeldet } = await searchParams;
 
   if (!user) {
-    return <LandingPage />;
+    return <LandingPage loggedOut={abgemeldet === "1"} />;
   }
 
   const myMemberships = await db
@@ -29,10 +34,10 @@ export default async function HomePage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Hallo {user.name ?? user.email}</h1>
-          <div className="text-sm" style={{ color: "var(--text-light)" }}>
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold break-words">Hallo {user.name ?? user.email}</h1>
+          <div className="text-sm break-all" style={{ color: "var(--text-light)" }}>
             {user.email}
             {user.isSuperadmin ? " · Super-Admin" : ""}
           </div>
@@ -91,9 +96,18 @@ export default async function HomePage() {
   );
 }
 
-function LandingPage() {
+function LandingPage({ loggedOut = false }: { loggedOut?: boolean }) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
+      {loggedOut ? (
+        <div
+          role="status"
+          className="rounded-lg p-3 text-sm mb-4"
+          style={{ background: "var(--success-bg)", color: "var(--success)" }}
+        >
+          Du bist abgemeldet.
+        </div>
+      ) : null}
       <div className="hero">
         <div className="hero-icon">📋</div>
         <h1 className="text-3xl font-bold mb-2">Rundlaufbeschlüsse</h1>

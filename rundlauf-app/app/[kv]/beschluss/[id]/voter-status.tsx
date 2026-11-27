@@ -1,4 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
+import { formatPercent } from "@/lib/format";
 import { db } from "@/lib/db";
 import { eligibleVoters, votes } from "@/lib/db/schema";
 
@@ -89,7 +90,7 @@ export async function VoterStatusPanel({
         </span>
       </div>
       <p className="text-sm mb-4" style={{ color: "var(--text-light)" }}>
-        Du siehst, <strong>wer</strong> bereits abgegeben hat — die Stimme selbst bleibt geheim.
+        Du siehst, <strong>wer</strong> bereits abgegeben hat. Die einzelnen Stimmen werden erst mit dem Protokoll nach Abschluss sichtbar.
       </p>
 
       <div className="rounded-xl p-4 sm:p-5 mb-5" style={{ background: "var(--bg)" }}>
@@ -106,7 +107,7 @@ export async function VoterStatusPanel({
                 / {eligibleCount}
               </span>
               <span className="text-sm tabular-nums ml-1" style={{ color: "var(--text-light)" }}>
-                ({pct.toFixed(1)} %)
+                ({formatPercent(pct)})
               </span>
             </div>
           </div>

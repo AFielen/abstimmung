@@ -16,6 +16,12 @@ export function formatDateTime(d: Date | string): string {
   }) + " Uhr";
 }
 
+export function formatPercent(n: number, digits = 1): string {
+  return (
+    n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + " %"
+  );
+}
+
 export function roleLabel(role: string): string {
   return (
     {

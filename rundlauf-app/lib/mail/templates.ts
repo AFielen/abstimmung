@@ -37,8 +37,12 @@ const formatFrist = (d: Date) =>
 export async function sendLoginLink(opts: {
   to: { email: string; name?: string };
   rawToken: string;
+  /** Relativer Pfad, auf den nach der Anmeldung weitergeleitet wird. */
+  next?: string;
 }) {
-  const link = `${appUrl()}/auth/magic/${opts.rawToken}`;
+  const link = `${appUrl()}/auth/magic/${opts.rawToken}${
+    opts.next ? `?next=${encodeURIComponent(opts.next)}` : ""
+  }`;
   const text = `Hallo${opts.to.name ? " " + opts.to.name : ""},\n\nklicke auf den folgenden Link, um dich anzumelden:\n${link}\n\nDer Link ist 60 Minuten gültig.`;
   const html = HTML_WRAPPER(
     "Dein Anmelde-Link",

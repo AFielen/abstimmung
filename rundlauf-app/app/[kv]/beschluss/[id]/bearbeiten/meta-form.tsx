@@ -74,7 +74,7 @@ export function MetaForm({
         <Feedback state={state} />
 
         <button type="submit" className="drk-btn-secondary self-start" disabled={pending}>
-          {pending ? "Speichere …" : "Verfahrensdaten speichern"}
+          {pending ? "Wird gespeichert …" : "Verfahrensdaten speichern"}
         </button>
       </form>
     </section>

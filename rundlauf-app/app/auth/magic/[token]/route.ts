@@ -4,7 +4,7 @@ import { consumeMagicToken } from "@/lib/auth/magic";
 import { isSuperadminEmail } from "@/lib/auth/current-user";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { memberships, users } from "@/lib/db/schema";
+import { memberships, tenants, users } from "@/lib/db/schema";
 import { sendPendingResolutionInvites } from "@/lib/mail/pending-invites";
 
 export async function GET(
@@ -87,11 +87,22 @@ export async function GET(
 
   // Weiterleitungsziel
   let redirectTo = "/";
+  const next = req.nextUrl.searchParams.get("next");
   if (consumed.purpose === "register") {
     redirectTo = "/neuer-kv";
   } else if (consumed.purpose === "invite" && consumed.tenantId) {
-    // Wir kennen die Slug nicht direkt → Dashboard, das routet weiter
-    redirectTo = "/";
+    // Direkt in den Kreisverband, zu dem die Einladung gehört.
+    const t = (
+      await db
+        .select({ slug: tenants.slug })
+        .from(tenants)
+        .where(eq(tenants.id, consumed.tenantId))
+        .limit(1)
+    )[0];
+    redirectTo = t ? `/${t.slug}` : "/";
+  } else if (next && /^\/(?!\/)/.test(next) && next.length <= 300) {
+    // Login-Link aus einer Seite, die eine Anmeldung verlangte (z. B. Beschluss-Link aus der Mail).
+    redirectTo = next;
   }
 
   return NextResponse.redirect(new URL(redirectTo, baseUrl));

@@ -149,7 +149,7 @@ export function AttachmentsSection({
             </div>
           ) : null}
           <button type="submit" className="drk-btn-secondary self-start" disabled={uploading}>
-            {uploading ? "Lade hoch …" : "Hochladen"}
+            {uploading ? "Wird hochgeladen …" : "Hochladen"}
           </button>
         </form>
       ) : (

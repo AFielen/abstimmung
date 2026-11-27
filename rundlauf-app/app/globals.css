@@ -574,3 +574,20 @@ body {
     opacity: 1;
   }
 }
+
+/* Sichtbarer Tastaturfokus für alle Bedienelemente (WCAG 2.4.7). */
+.drk-btn-primary:focus-visible,
+.drk-btn-secondary:focus-visible,
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+input[type="radio"]:focus-visible,
+input[type="checkbox"]:focus-visible {
+  outline: 3px solid var(--drk);
+  outline-offset: 2px;
+}
+
+.drk-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

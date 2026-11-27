@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -17,7 +18,11 @@ export type TenantContext = {
 export const requireTenantContext = cache(
   async (slug: string): Promise<TenantContext> => {
     const user = await getCurrentUser();
-    if (!user) redirect("/login");
+    if (!user) {
+      // Nach der Anmeldung zurück auf die angeforderte Seite (siehe proxy.ts).
+      const path = (await headers()).get("x-pathname");
+      redirect(path && path.startsWith("/") ? `/login?next=${encodeURIComponent(path)}` : "/login");
+    }
 
     const tenant = (
       await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1)
