@@ -198,6 +198,9 @@ services:
       PGDATABASE: rundlauf
       PGPASSWORD: ${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}
       KEEP_DAYS: ${RUNDLAUF_BACKUP_KEEP_DAYS:-14}
+      # Optional: healthchecks.io-style ping after each successful dump
+      # (VPS-SECURITY.md §6.3 "Ping-on-Success"). Empty = no ping.
+      PING_URL: ${RUNDLAUF_BACKUP_PING_URL:-}
       TZ: Europe/Berlin
     entrypoint: ["/bin/sh", "-c"]
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
@@ -213,6 +216,9 @@ services:
             find "$$DIR" -name 'rundlauf-*.dump' -mtime +"$$KEEP_DAYS" -delete
             touch /tmp/backup.last-success
             echo "[db-backup] ok: rundlauf-$$TS.dump ($$(du -h "$$DIR/rundlauf-$$TS.dump" | cut -f1))"
+            if [ -n "$$PING_URL" ]; then
+              wget -q -T 10 -O /dev/null "$$PING_URL" || echo "[db-backup] ping failed" >&2
+            fi
           else
             rm -f "$$DIR/rundlauf-$$TS.dump.part"
             echo "[db-backup] FAILED at $$TS" >&2

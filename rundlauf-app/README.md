@@ -63,6 +63,8 @@ Custom-Format in das Volume `rundlauf-db-backups`
 (`/var/lib/postgresql/backups/rundlauf-<UTC-Zeitstempel>.dump`) und löscht
 Dumps älter als `RUNDLAUF_BACKUP_KEEP_DAYS` (Standard 14). Das Plattform-Backup
 sichert dieses Volume verschlüsselt off-site (siehe `/srv/ops/backup/`).
+Mit `RUNDLAUF_BACKUP_PING_URL` (z. B. healthchecks.io) meldet der Sidecar jeden
+erfolgreichen Dump; bleibt der Ping aus, schlägt das externe Monitoring an.
 
 ```bash
 # Dumps auflisten
