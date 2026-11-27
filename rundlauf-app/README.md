@@ -55,6 +55,44 @@ ist:
 - Magic-Tokens älter als 30 Tage → gelöscht
 - Audit-Log älter als `RETENTION_YEARS` → gelöscht
 
+## Backups
+
+Der Container `rundlauf-db-backup` (Image `postgres:16-alpine`, läuft als
+`postgres`-User ohne Capabilities) zieht täglich einen `pg_dump` im
+Custom-Format in das Volume `rundlauf-db-backups`
+(`/var/lib/postgresql/backups/rundlauf-<UTC-Zeitstempel>.dump`) und löscht
+Dumps älter als `RUNDLAUF_BACKUP_KEEP_DAYS` (Standard 14). Das Plattform-Backup
+sichert dieses Volume verschlüsselt off-site (siehe `/srv/ops/backup/`).
+
+```bash
+# Dumps auflisten
+docker exec rundlauf-db-backup ls -l /var/lib/postgresql/backups
+
+# Sofort einen Dump ziehen
+docker exec rundlauf-db-backup pg_dump --format=custom \
+  --file=/var/lib/postgresql/backups/rundlauf-manual.dump
+
+# Restore in die laufende Datenbank (App vorher stoppen!)
+docker compose stop rundlauf rundlauf-retention rundlauf-reminders rundlauf-auto-close
+docker exec rundlauf-db-backup pg_restore --clean --if-exists \
+  -d rundlauf /var/lib/postgresql/backups/rundlauf-<Zeitstempel>.dump
+docker compose start rundlauf rundlauf-retention rundlauf-reminders rundlauf-auto-close
+```
+
+## Betrieb (Compose-Härtung)
+
+- Alle `rundlauf*`-Container laufen mit `cap_drop: [ALL]` und
+  `no-new-privileges`; die Datenbank behält nur die Caps, die das offizielle
+  Postgres-Image für `initdb`/`chown` braucht.
+- Pflicht-Variablen (`RUNDLAUF_DB_PASSWORD`, `SESSION_SECRET`,
+  `MAILJET_API_KEY`, `MAILJET_API_SECRET`) haben keine Defaults mehr –
+  Compose bricht mit klarer Meldung ab, wenn sie fehlen.
+- `TZ=Europe/Berlin`: Fristen aus `datetime-local`-Eingaben werden als
+  deutsche Ortszeit interpretiert und angezeigt (vorher UTC, d. h. eine Frist
+  „18:00“ endete real um 19:00/20:00).
+- Die Cron-Container warten auf den gesunden App-Container, damit ihr erster
+  Lauf erst nach den Migrationen stattfindet.
+
 ## Architektur-Anmerkungen
 
 - **Mandantenfähigkeit**: pfadbasiert via `/[kv]/...`

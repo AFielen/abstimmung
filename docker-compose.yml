@@ -33,14 +33,18 @@ services:
     build:
       context: ./rundlauf-app
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
     depends_on:
       rundlauf-db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
-      SESSION_SECRET: ${SESSION_SECRET}
-      MAILJET_API_KEY: ${MAILJET_API_KEY}
-      MAILJET_API_SECRET: ${MAILJET_API_SECRET}
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}@rundlauf-db:5432/rundlauf
+      TZ: Europe/Berlin
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET fehlt (mind. 32 Zeichen, siehe .env.example)}
+      MAILJET_API_KEY: ${MAILJET_API_KEY:?MAILJET_API_KEY fehlt (siehe .env.example)}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:?MAILJET_API_SECRET fehlt (siehe .env.example)}
       MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
       APP_URL: ${RUNDLAUF_APP_URL:-https://rundlauf.drk-abstimmung.de}
@@ -56,9 +60,15 @@ services:
     container_name: rundlauf-db
     image: postgres:16-alpine
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    # Official postgres image starts as root and drops to postgres via su-exec;
+    # these caps are needed for initdb/chown on a fresh volume.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     environment:
       POSTGRES_USER: rundlauf
-      POSTGRES_PASSWORD: ${RUNDLAUF_DB_PASSWORD:-rundlauf}
+      POSTGRES_PASSWORD: ${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}
       POSTGRES_DB: rundlauf
     volumes:
       - rundlauf-pgdata:/var/lib/postgresql/data
@@ -75,11 +85,17 @@ services:
     build:
       context: ./rundlauf-app
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
     depends_on:
       rundlauf-db:
         condition: service_healthy
+      rundlauf:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}@rundlauf-db:5432/rundlauf
+      TZ: Europe/Berlin
       RETENTION_YEARS: ${RETENTION_YEARS:-10}
     entrypoint: ["/bin/sh", "-c"]
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
@@ -99,13 +115,19 @@ services:
     build:
       context: ./rundlauf-app
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
     depends_on:
       rundlauf-db:
         condition: service_healthy
+      rundlauf:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
-      MAILJET_API_KEY: ${MAILJET_API_KEY}
-      MAILJET_API_SECRET: ${MAILJET_API_SECRET}
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}@rundlauf-db:5432/rundlauf
+      TZ: Europe/Berlin
+      MAILJET_API_KEY: ${MAILJET_API_KEY:?MAILJET_API_KEY fehlt (siehe .env.example)}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:?MAILJET_API_SECRET fehlt (siehe .env.example)}
       MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
       APP_URL: ${RUNDLAUF_APP_URL:-https://rundlauf.drk-abstimmung.de}
@@ -127,11 +149,17 @@ services:
     build:
       context: ./rundlauf-app
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
     depends_on:
       rundlauf-db:
         condition: service_healthy
+      rundlauf:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:-rundlauf}@rundlauf-db:5432/rundlauf
+      DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}@rundlauf-db:5432/rundlauf
+      TZ: Europe/Berlin
     entrypoint: ["/bin/sh", "-c"]
     # Stündlich: Beschlüsse mit abgelaufener Frist finalisieren.
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 1.5h.
@@ -143,6 +171,63 @@ services:
       interval: 30m
       timeout: 10s
       start_period: 2m
+      retries: 1
+
+  # Daily pg_dump (custom format) into its own volume; the platform backup
+  # (/srv/ops/backup/backup.sh) ships all volumes off-site, so this is the
+  # consistent DB snapshot VPS-SECURITY.md §8 requires. Runs as the image's
+  # postgres user (uid 70); the volume is mounted at /var/lib/postgresql so it
+  # inherits that owner from the image (a fresh volume at a new path would be
+  # root-owned and unwritable). Restore: see APP-SECURITY.md.
+  rundlauf-db-backup:
+    container_name: rundlauf-db-backup
+    image: postgres:16-alpine
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    user: "70:70"
+    depends_on:
+      rundlauf-db:
+        condition: service_healthy
+      rundlauf:
+        condition: service_healthy
+    environment:
+      PGHOST: rundlauf-db
+      PGUSER: rundlauf
+      PGDATABASE: rundlauf
+      PGPASSWORD: ${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}
+      KEEP_DAYS: ${RUNDLAUF_BACKUP_KEEP_DAYS:-14}
+      TZ: Europe/Berlin
+    entrypoint: ["/bin/sh", "-c"]
+    # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 25h.
+    command:
+      - |
+        set -u
+        DIR=/var/lib/postgresql/backups
+        mkdir -p "$$DIR"
+        while true; do
+          TS=$$(date -u +%Y%m%dT%H%M%SZ)
+          if pg_dump --format=custom --file="$$DIR/rundlauf-$$TS.dump.part" \
+             && mv "$$DIR/rundlauf-$$TS.dump.part" "$$DIR/rundlauf-$$TS.dump"; then
+            find "$$DIR" -name 'rundlauf-*.dump' -mtime +"$$KEEP_DAYS" -delete
+            touch /tmp/backup.last-success
+            echo "[db-backup] ok: rundlauf-$$TS.dump ($$(du -h "$$DIR/rundlauf-$$TS.dump" | cut -f1))"
+          else
+            rm -f "$$DIR/rundlauf-$$TS.dump.part"
+            echo "[db-backup] FAILED at $$TS" >&2
+          fi
+          sleep 86400
+        done
+    volumes:
+      - rundlauf-db-backups:/var/lib/postgresql
+    networks:
+      - rundlauf-int
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /tmp/backup.last-success ] && [ $(($(date +%s) - $(stat -c %Y /tmp/backup.last-success))) -lt 90000 ]"]
+      interval: 30m
+      timeout: 10s
+      start_period: 3m
       retries: 1
 
   # Dev profile: expose ports for local development without Caddy
@@ -178,6 +263,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://rundlauf:rundlauf@rundlauf-db-dev:5432/rundlauf
+      TZ: Europe/Berlin
       SESSION_SECRET: ${SESSION_SECRET:-dev-secret-please-replace-min-32-characters}
       MAILJET_API_KEY: ${MAILJET_API_KEY}
       MAILJET_API_SECRET: ${MAILJET_API_SECRET}
@@ -211,6 +297,7 @@ services:
 
 volumes:
   rundlauf-pgdata:
+  rundlauf-db-backups:
   rundlauf-pgdata-dev:
   rundlauf-protokolle:
 
