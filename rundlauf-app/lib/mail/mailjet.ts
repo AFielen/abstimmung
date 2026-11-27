@@ -2,6 +2,7 @@ type MailjetRecipient = { Email: string; Name?: string };
 
 type MailjetMessage = {
   From: { Email: string; Name?: string };
+  ReplyTo?: MailjetRecipient;
   To: MailjetRecipient[];
   Subject: string;
   TextPart: string;
@@ -38,9 +39,12 @@ export async function sendMail(opts: {
   subject: string;
   text: string;
   html?: string;
+  /** Antworten gehen an diese Person statt an die noreply-Adresse. */
+  replyTo?: { email: string; name?: string };
 }): Promise<void> {
   const message: MailjetMessage = {
     From: getDefaultSender(),
+    ReplyTo: opts.replyTo ? { Email: opts.replyTo.email, Name: opts.replyTo.name } : undefined,
     To: [{ Email: opts.to.email, Name: opts.to.name }],
     Subject: opts.subject,
     TextPart: opts.text,

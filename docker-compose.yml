@@ -160,6 +160,12 @@ services:
     environment:
       DATABASE_URL: postgres://rundlauf:${RUNDLAUF_DB_PASSWORD:?RUNDLAUF_DB_PASSWORD fehlt (siehe .env.example)}@rundlauf-db:5432/rundlauf
       TZ: Europe/Berlin
+      # Ergebnis-Mails nach automatischem Abschluss
+      MAILJET_API_KEY: ${MAILJET_API_KEY:?MAILJET_API_KEY fehlt (siehe .env.example)}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:?MAILJET_API_SECRET fehlt (siehe .env.example)}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-noreply@drk-abstimmung.de}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DRK Rundlaufbeschlüsse}
+      APP_URL: ${RUNDLAUF_APP_URL:-https://rundlauf.drk-abstimmung.de}
     entrypoint: ["/bin/sh", "-c"]
     # Stündlich: Beschlüsse mit abgelaufener Frist finalisieren.
     # Touch-Marker bei erfolgreichem Lauf → Healthcheck prüft Alter < 1.5h.

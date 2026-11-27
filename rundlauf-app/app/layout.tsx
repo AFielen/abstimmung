@@ -52,12 +52,12 @@ export default function RootLayout({
           className="flex items-center justify-between gap-3 px-6 py-4"
           style={{ background: "#e30613", color: "#fff" }}
         >
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="DRK Logo" width={42} height={42} />
             <div>
               {/* Site title is not a heading: each page brings its own h1. */}
-              <span className="block text-[1.4rem] font-bold leading-tight">
+              <span className="block text-lg sm:text-[1.4rem] font-bold leading-tight">
                 DRK Rundlaufbeschlüsse
               </span>
               <span className="block text-[0.8rem]">
@@ -69,7 +69,7 @@ export default function RootLayout({
           <div className="flex items-center gap-1">
             <Link
               href="/hilfe"
-              className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center w-11 h-11 shrink-0 rounded-full hover:bg-white/10 transition-colors"
               title="Hilfe"
               aria-label="Hilfe"
             >

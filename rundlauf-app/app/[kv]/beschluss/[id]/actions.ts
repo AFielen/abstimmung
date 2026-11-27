@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -14,6 +15,7 @@ import {
   votes,
 } from "@/lib/db/schema";
 import { finalizeResolution } from "@/lib/finalize";
+import { notifyResolutionResult } from "@/lib/mail/resolution-result";
 import { isPastDeadline, parseOptions } from "@/lib/resolution";
 import { requireAdmin, requireTenantContext } from "@/lib/tenant";
 import { belongsToTenant, invalidInput } from "@/lib/action-helpers";
@@ -218,6 +220,8 @@ export async function closeResolution(
     targetType: "resolution",
     targetId: r.id,
   });
+  // Ergebnis-Mail an alle Stimmberechtigten, nach der Antwort an den Admin.
+  after(() => notifyResolutionResult(r.id));
 
   revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}`);
   return { ok: true, message: "Beschluss abgeschlossen" };
@@ -252,6 +256,7 @@ export async function withdrawResolution(
     targetType: "resolution",
     targetId: r.id,
   });
+  after(() => notifyResolutionResult(r.id));
   revalidatePath(`/${parsed.data.kv}/beschluss/${r.id}`);
   return { ok: true, message: "Beschluss zurückgezogen" };
 }

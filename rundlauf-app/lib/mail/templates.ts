@@ -8,15 +8,16 @@ function appUrl(): string {
 }
 
 const HTML_WRAPPER = (heading: string, body: string) => `<!doctype html>
-<html lang="de"><body style="font-family: -apple-system, system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #212529;">
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${heading}</title></head>
+<body style="font-family: -apple-system, system-ui, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #212529; font-size: 16px; line-height: 1.5;">
   <div style="background: #e30613; color: #fff; padding: 16px 24px; border-radius: 12px 12px 0 0;">
     <strong style="font-size: 1.1rem;">DRK Rundlaufbeschlüsse</strong>
   </div>
   <div style="background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
     <h2 style="margin-top: 0;">${heading}</h2>
     ${body}
-    <p style="margin-top: 24px; font-size: 0.8rem; color: #6b7280;">
-      DRK Kreisverband StädteRegion Aachen e.V. · diese E-Mail wurde automatisch versendet
+    <p style="margin-top: 24px; font-size: 14px; color: #6b7280;">
+      Diese E-Mail wurde automatisch von DRK Rundlaufbeschlüsse versendet. Bei Fragen antworte einfach auf diese Nachricht oder wende dich an die Verwaltung deines Verbands.
     </p>
   </div>
 </body></html>`;
@@ -71,6 +72,7 @@ export async function sendRegisterLink(opts: {
 export async function sendInviteLink(opts: {
   to: { email: string; name?: string };
   inviterName: string;
+  inviterEmail?: string;
   tenantName: string;
   rawToken: string;
 }) {
@@ -103,7 +105,13 @@ export async function sendInviteLink(opts: {
      <p style="font-size: 0.85rem; color: #6b7280;">Nach dem Klick bist du direkt angemeldet – ein Passwort wird nicht benötigt. Der Link ist <strong>7 Tage</strong> gültig.</p>
      <p style="font-size: 0.85rem; color: #6b7280;">Falls du diese Einladung nicht erwartest, kannst du diese E-Mail einfach ignorieren – ohne Klick passiert nichts.</p>`,
   );
-  await sendMail({ to: opts.to, subject: `Einladung zu ${opts.tenantName}`, text, html });
+  await sendMail({
+    to: opts.to,
+    subject: `Einladung zu ${opts.tenantName}`,
+    text,
+    html,
+    replyTo: opts.inviterEmail ? { email: opts.inviterEmail, name: opts.inviterName } : undefined,
+  });
 }
 
 export async function sendSuperadminNewTenantNotice(opts: {
@@ -163,28 +171,63 @@ export async function sendResolutionInvite(opts: {
   resolutionLink: string;
   fristEnde: Date;
   topCount?: number;
+  /** Eröffnende Person – Antworten auf die Mail gehen an sie. */
+  replyTo?: { email: string; name?: string };
 }) {
   const fristStr = formatFrist(opts.fristEnde);
   const topInfo =
     typeof opts.topCount === "number"
       ? `${opts.topCount} Beschlussvorlage${opts.topCount === 1 ? "" : "n"} · `
       : "";
-  const text = `Hallo,\n\nim Kreisverband "${opts.tenantName}" wurde ein neues Umlaufverfahren eröffnet:\n\n"${opts.resolutionTitle}"\n\n${topInfo}Frist: ${fristStr}\n\nZum Abstimmen:\n${opts.resolutionLink}`;
+  const greeting = opts.to.name ? ` ${opts.to.name}` : "";
+  // Der Titel heißt bei leerem Betreff bereits "Umlaufverfahren mit …" – nicht doppeln.
+  const subject = /^umlaufverfahren/i.test(opts.resolutionTitle)
+    ? opts.resolutionTitle
+    : `Umlaufverfahren: ${opts.resolutionTitle}`;
+  const text = `Hallo${greeting},\n\nim Kreisverband "${opts.tenantName}" wurde ein neues Umlaufverfahren eröffnet, in dem du stimmberechtigt bist:\n\n"${opts.resolutionTitle}"\n\n${topInfo}Frist: ${fristStr}\n\nBitte lies die Beschlussvorlage(n) und gib deine Stimme bis zum Fristende ab. Deine Stimme wird namentlich erfasst.\n\nZum Abstimmen (du wirst ggf. zuerst zur Anmeldung geleitet):\n${opts.resolutionLink}`;
   const html = HTML_WRAPPER(
     `Neues Umlaufverfahren: ${esc(opts.resolutionTitle)}`,
-    `<p>Im Kreisverband <strong>${esc(opts.tenantName)}</strong> wurde ein neues Umlaufverfahren eröffnet:</p>
+    `<p>${greetingHtml(opts.to.name)}</p>
+     <p>im Kreisverband <strong>${esc(opts.tenantName)}</strong> wurde ein neues Umlaufverfahren eröffnet, in dem du stimmberechtigt bist:</p>
      <p style="background: #fef2f2; padding: 12px 16px; border-left: 4px solid #e30613; border-radius: 4px;">
        <strong>${esc(opts.resolutionTitle)}</strong><br/>
        ${topInfo}Frist: ${fristStr}
      </p>
-     ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}`,
+     <p>Bitte lies die Beschlussvorlage(n) und gib deine Stimme bis zum Fristende ab. Deine Stimme wird namentlich erfasst.</p>
+     ${ctaButton(opts.resolutionLink, "Jetzt abstimmen")}
+     ${linkFallback(opts.resolutionLink, true)}
+     <p style="font-size: 14px; color: #6b7280;">Falls du nicht angemeldet bist, führt dich der Link zuerst zur Anmeldung und danach direkt zum Verfahren.</p>`,
   );
-  await sendMail({
-    to: opts.to,
-    subject: `Umlaufverfahren: ${opts.resolutionTitle}`,
-    text,
-    html,
-  });
+  await sendMail({ to: opts.to, subject, text, html, replyTo: opts.replyTo });
+}
+
+export async function sendResolutionResult(opts: {
+  to: { email: string; name?: string };
+  tenantName: string;
+  resolutionTitle: string;
+  resolutionLink: string;
+  status: "abgeschlossen" | "zurueckgezogen";
+  /** Eine Zeile je TOP, z. B. "TOP 1 – Haushalt 2027: angenommen (5 Ja, 1 Nein, 0 Enthaltungen)". */
+  outcomes: string[];
+}) {
+  const greeting = opts.to.name ? ` ${opts.to.name}` : "";
+  const withdrawn = opts.status === "zurueckgezogen";
+  const headline = withdrawn
+    ? `Umlaufverfahren zurückgezogen: ${opts.resolutionTitle}`
+    : `Ergebnis: ${opts.resolutionTitle}`;
+  const intro = withdrawn
+    ? `das Umlaufverfahren "${opts.resolutionTitle}" im Kreisverband "${opts.tenantName}" wurde ohne Auszählung zurückgezogen.`
+    : `das Umlaufverfahren "${opts.resolutionTitle}" im Kreisverband "${opts.tenantName}" ist abgeschlossen. Ergebnis:`;
+  const text = [`Hallo${greeting},`, "", intro, "", ...(withdrawn ? [] : opts.outcomes.map((o) => `- ${o}`)), "", `Details und Protokoll:`, opts.resolutionLink].join("\n");
+  const html = HTML_WRAPPER(
+    esc(headline),
+    `<p>${greetingHtml(opts.to.name)}</p>
+     <p>${esc(intro)}</p>
+     ${withdrawn ? "" : `<ul>${opts.outcomes.map((o) => `<li>${esc(o)}</li>`).join("")}</ul>`}
+     ${ctaButton(opts.resolutionLink, withdrawn ? "Verfahren ansehen" : "Ergebnis und Protokoll ansehen")}
+     ${linkFallback(opts.resolutionLink)}`,
+  );
+  await sendMail({ to: opts.to, subject: headline, text, html });
 }
 
 export async function sendVoteReminder(opts: {

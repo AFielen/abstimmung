@@ -514,6 +514,7 @@ export async function publishResolution(
           resolutionLink: link,
           fristEnde: r.fristEnde,
           topCount,
+          replyTo: { email: ctx.user.email, name: ctx.user.name ?? undefined },
         });
         return { status: "fulfilled", value: undefined };
       } catch (reason) {

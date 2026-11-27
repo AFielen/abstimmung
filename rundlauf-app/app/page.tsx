@@ -87,7 +87,7 @@ export default async function HomePage({
           </ul>
         )}
         <div className="mt-4">
-          <Link href="/neuer-kv" className="drk-btn-primary">
+          <Link href="/neuer-kv" className="drk-btn-secondary">
             Neuen Kreisverband anlegen
           </Link>
         </div>

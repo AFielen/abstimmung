@@ -102,6 +102,7 @@ async function inviteUserToTenant(opts: {
   await sendInviteLink({
     to: { email, name: user.name ?? undefined },
     inviterName: ctx.user.name ?? ctx.user.email,
+    inviterEmail: ctx.user.email,
     tenantName: ctx.tenant.name,
     rawToken: raw,
   });
