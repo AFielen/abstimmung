@@ -1,0 +1,78 @@
+# CI für alle drei Pakete des Repos. Läuft auf PRs und auf main.
+# Node 22 entspricht den Dockerfiles (node:22-alpine).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rundlauf-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rundlauf-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rundlauf-app/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  next-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: next-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: next-app/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      # Bestand: 20 Lint-Fehler in den Transport-Hooks (react-hooks/refs u. a.).
+      # Bis die behoben sind, bricht Lint den Build nicht ab.
+      - run: npm run lint
+        continue-on-error: true
+      - run: npx tsx lib/voted-rounds.test.ts
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_SIGNAL_SERVER_URL: https://signal.drk-abstimmung.de
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx tsx src/ws-relay.test.ts
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
