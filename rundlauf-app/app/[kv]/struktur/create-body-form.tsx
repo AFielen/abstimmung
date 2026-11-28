@@ -76,7 +76,7 @@ export function CreateBodyForm({
         </div>
       ) : null}
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Lege an …" : "Gremium anlegen"}
+        {pending ? "Wird angelegt …" : "Gremium anlegen"}
       </button>
     </form>
   );

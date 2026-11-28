@@ -15,9 +15,13 @@ export type StrukturState = { ok: boolean; message?: string };
 
 const orgCreateSchema = z.object({
   kv: z.string().min(1),
-  name: z.string().min(2).max(160).transform((v) => v.trim()),
+  name: z
+    .string()
+    .min(2, "Bitte einen Namen mit mindestens 2 Zeichen eingeben")
+    .max(160, "Der Name darf höchstens 160 Zeichen lang sein")
+    .transform((v) => v.trim()),
   type: z.enum(["verein", "gmbh", "ggmbh", "gug", "kdoer", "sonstige"]),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500, "Die Beschreibung darf höchstens 500 Zeichen lang sein").optional(),
 });
 
 export async function createOrganization(
@@ -111,7 +115,11 @@ export async function deleteOrganization(
 const bodyCreateSchema = z.object({
   kv: z.string().min(1),
   organizationId: z.string().uuid().optional().or(z.literal("")),
-  name: z.string().min(2).max(120).transform((v) => v.trim()),
+  name: z
+    .string()
+    .min(2, "Bitte einen Namen mit mindestens 2 Zeichen eingeben")
+    .max(120, "Der Name darf höchstens 120 Zeichen lang sein")
+    .transform((v) => v.trim()),
   defaultQuorumPct: z.coerce.number().int().min(50).max(100).default(75),
   defaultMehrheit: z.enum(["simple", "two_thirds", "three_quarters"]).default("simple"),
 });

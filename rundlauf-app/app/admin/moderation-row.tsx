@@ -7,11 +7,11 @@ type Props = {
   tenantId: string;
   name: string;
   slug: string;
-  createdAt: Date;
+  createdAtLabel: string;
   creatorEmail: string;
 };
 
-export function ModerationRow({ tenantId, name, slug, createdAt, creatorEmail }: Props) {
+export function ModerationRow({ tenantId, name, slug, createdAtLabel, creatorEmail }: Props) {
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
   const [showReject, setShowReject] = useState(false);
@@ -53,8 +53,8 @@ export function ModerationRow({ tenantId, name, slug, createdAt, creatorEmail }:
           <div className="text-sm" style={{ color: "var(--text-light)" }}>
             Kennung: <code>{slug}</code> · Angelegt von {creatorEmail}
           </div>
-          <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            {new Date(createdAt).toLocaleString("de-DE")}
+          <div className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+            Beantragt am {createdAtLabel}
           </div>
         </div>
       </div>

@@ -60,7 +60,6 @@ export function CollapsibleMarkdown({
           style={{
             maxHeight,
             overflow: (showCollapsed || isMeasuring) ? "hidden" : "visible",
-            visibility: isMeasuring ? "hidden" : undefined,
           }}
           dangerouslySetInnerHTML={{ __html: html }}
         />
@@ -69,7 +68,7 @@ export function CollapsibleMarkdown({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-xs underline"
+          className="mt-1 inline-flex items-center py-2 text-sm font-semibold underline"
           style={{ color: "var(--drk)" }}
           aria-expanded={expanded}
           aria-controls={contentId}

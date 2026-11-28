@@ -79,7 +79,7 @@ export function CreateTenantForm() {
       ) : null}
 
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Sende Antrag …" : "Antrag einreichen"}
+        {pending ? "Antrag wird gesendet …" : "Antrag einreichen"}
       </button>
     </form>
   );

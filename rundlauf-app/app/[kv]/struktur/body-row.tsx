@@ -49,7 +49,6 @@ export function BodyRow({ kv, body }: { kv: string; body: Body }) {
             onClick={() => run(unarchiveBody, null)}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Wiederherstellen
           </button>
@@ -59,7 +58,6 @@ export function BodyRow({ kv, body }: { kv: string; body: Body }) {
             onClick={() => run(archiveBody, `"${body.name}" archivieren? (nur möglich wenn alle Beschlüsse abgeschlossen)`)}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Archivieren
           </button>
@@ -69,7 +67,6 @@ export function BodyRow({ kv, body }: { kv: string; body: Body }) {
           onClick={() => run(deleteBody, `"${body.name}" endgültig löschen? (nur möglich wenn keine Beschlüsse vorhanden)`)}
           disabled={pending}
           className="drk-btn-secondary"
-          style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
         >
           Löschen
         </button>

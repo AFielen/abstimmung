@@ -1,4 +1,5 @@
 import type { ResolutionResult } from "@/lib/resolution";
+import { formatPercent } from "@/lib/format";
 
 type Tone = "success" | "warning" | "neutral";
 
@@ -24,6 +25,11 @@ export function ResolutionStatus({
   variant = "full",
 }: ResolutionStatusProps) {
   const isCompact = variant === "compact";
+  // While the vote is running, nothing is "missed" yet – show neutral wording.
+  const running = closure === null;
+  const withdrawn = closure?.status === "zurueckgezogen";
+  const toneFor = (reached: boolean): Tone =>
+    withdrawn ? "neutral" : reached ? "success" : running ? "neutral" : "warning";
   return (
     <div className={isCompact ? "" : "border-t pt-4"} style={isCompact ? {} : { borderColor: "var(--border)" }}>
       <div className="flex items-baseline justify-between gap-2 mb-2 flex-wrap">
@@ -40,20 +46,30 @@ export function ResolutionStatus({
       <div className={`grid sm:grid-cols-3 gap-${isCompact ? 2 : 3} mb-3`}>
         <Stat
           label="Abgegeben"
-          value={`${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`}
-          tone={result.quorumReached ? "success" : "warning"}
+          value={`${result.voteCount} / ${result.eligibleCount} (${formatPercent(result.participationPct)})`}
+          tone={toneFor(result.quorumReached)}
           compact={isCompact}
         />
         <Stat
           label="Quorum"
-          value={result.quorumReached ? "Erreicht" : `Min. ${quorumPct} %`}
-          tone={result.quorumReached ? "success" : "warning"}
+          value={
+            withdrawn
+              ? "Keine Auszählung"
+              : result.quorumReached
+                ? "Erreicht"
+                : running
+                  ? `Noch offen (mind. ${quorumPct} %)`
+                  : `Verfehlt (mind. ${quorumPct} %)`
+          }
+          tone={toneFor(result.quorumReached)}
           compact={isCompact}
         />
         <Stat
           label="Mehrheit"
-          value={result.majorityReached ? "Erreicht" : "Verfehlt"}
-          tone={result.majorityReached ? "success" : "warning"}
+          value={
+            withdrawn ? "Keine Auszählung" : result.majorityReached ? "Erreicht" : running ? "Noch offen" : "Verfehlt"
+          }
+          tone={toneFor(result.majorityReached)}
           compact={isCompact}
         />
       </div>
@@ -78,17 +94,23 @@ export function ResolutionStatus({
       {closure ? (
         <div
           className="mt-3 rounded-lg p-3 text-sm"
-          style={{
-            background: closure.accepted ? "var(--success-bg)" : "var(--drk-bg)",
-            color: closure.accepted ? "var(--success)" : "var(--drk)",
-          }}
+          style={
+            withdrawn
+              ? { background: "#eef0f2", color: "#374151" }
+              : {
+                  background: closure.accepted ? "var(--success-bg)" : "var(--drk-bg)",
+                  color: closure.accepted ? "var(--success)" : "var(--drk)",
+                }
+          }
         >
           <strong>
-            {closure.status === "zurueckgezogen"
-              ? "Verfahren zurückgezogen"
+            {withdrawn
+              ? "Verfahren zurückgezogen – keine Auszählung"
               : closure.accepted
                 ? "Angenommen"
-                : "Abgelehnt / Quorum verfehlt"}
+                : result.quorumReached
+                  ? "Nicht angenommen – erforderliche Mehrheit verfehlt"
+                  : "Nicht angenommen – Quorum verfehlt"}
           </strong>
         </div>
       ) : null}

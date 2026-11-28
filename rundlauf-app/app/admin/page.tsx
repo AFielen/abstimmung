@@ -3,8 +3,9 @@ import { requireSuperadmin } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
 import { tenants, users } from "@/lib/db/schema";
 import { ModerationRow } from "./moderation-row";
+import { formatDateTime } from "@/lib/format";
 
-export const metadata = { title: "Moderation – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Moderation" };
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function AdminPage() {
                 tenantId={t.id}
                 name={t.name}
                 slug={t.slug}
-                createdAt={t.createdAt}
+                createdAtLabel={formatDateTime(t.createdAt)}
                 creatorEmail={creatorMap.get(t.createdByUserId)?.email ?? "unbekannt"}
               />
             ))}

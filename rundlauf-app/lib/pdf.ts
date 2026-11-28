@@ -5,7 +5,7 @@ import {
   parseOptions,
   type ResolutionResult,
 } from "@/lib/resolution";
-import { formatBytes } from "./format";
+import { formatBytes, formatDateTime, formatPercent, roleLabel } from "./format";
 import { stripMarkdown } from "./markdown";
 
 type EligibleSnapshot = {
@@ -57,6 +57,13 @@ export function buildProtokollPdf(input: ProtokollInput): Buffer {
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text("DRK – PROTOKOLL UMLAUFVERFAHREN", MARGIN, 8);
+  doc.setProperties({
+    title: `Protokoll Umlaufverfahren – ${input.resolution.betreff?.trim() || input.resolution.id.slice(0, 8)}`,
+    subject: `${input.tenant.name}${input.body ? ` – ${input.body.name}` : ""}`,
+    author: input.tenant.name,
+    creator: "DRK Rundlaufbeschlüsse",
+  });
+  doc.setLanguage("de-DE");
   doc.setTextColor(33, 37, 41);
   y = 22;
 
@@ -74,25 +81,26 @@ export function buildProtokollPdf(input: ProtokollInput): Buffer {
   doc.text(`Verfahrens-ID: ${input.resolution.id}`, MARGIN, y);
   y += 4;
   if (input.resolution.betreff) {
-    doc.text(`Betreff: ${input.resolution.betreff}`, MARGIN, y);
-    y += 4;
+    const betreffLines = doc.splitTextToSize(`Betreff: ${input.resolution.betreff}`, PAGE_W - 2 * MARGIN);
+    doc.text(betreffLines, MARGIN, y);
+    y += 4 * betreffLines.length;
   }
   doc.text(
-    `Erstellt: ${new Date(input.resolution.createdAt).toLocaleString("de-DE")}`,
+    `Erstellt: ${formatDateTime(input.resolution.createdAt)}`,
     MARGIN,
     y,
   );
   y += 4;
   if (input.resolution.abgeschlossenAm) {
     doc.text(
-      `Abgeschlossen: ${new Date(input.resolution.abgeschlossenAm).toLocaleString("de-DE")}`,
+      `Abgeschlossen: ${formatDateTime(input.resolution.abgeschlossenAm)}`,
       MARGIN,
       y,
     );
     y += 4;
   }
   if (input.createdBy) {
-    doc.text(`Anlage: ${input.createdBy.name ?? input.createdBy.email}`, MARGIN, y);
+    doc.text(`Angelegt von: ${input.createdBy.name ?? input.createdBy.email}`, MARGIN, y);
     y += 4;
   }
   y += 4;
@@ -101,8 +109,11 @@ export function buildProtokollPdf(input: ProtokollInput): Buffer {
   y = ensureSpace(doc, y, 40);
   y = paragraphHeader(doc, "Verfahren", y);
   const verfahren = [
-    ["Rechtsgrundlage", "§ 21 Abs. 6 i.V.m. § 22 Abs. 5 DRK-Satzung KV StädteRegion Aachen"],
-    ["Frist (Ende)", new Date(input.resolution.fristEnde).toLocaleString("de-DE")],
+    ["Verfahrensart", `Umlaufbeschluss in Textform gemäß Satzung (${input.tenant.name})`],
+    ...(input.resolution.startedAt
+      ? [["Eröffnet", formatDateTime(input.resolution.startedAt)]]
+      : []),
+    ["Frist (Ende)", formatDateTime(input.resolution.fristEnde)],
     [
       "Stimm-Modus",
       input.resolution.voteChangeMode === "fest"
@@ -201,8 +212,9 @@ function drawAgendaItem(
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOP ${top.ordinal} – ${top.titel}`, MARGIN, y);
-  y += 6;
+  const titleLines = doc.splitTextToSize(`TOP ${top.ordinal} – ${top.titel}`, PAGE_W - 2 * MARGIN);
+  doc.text(titleLines, MARGIN, y);
+  y += 6 * titleLines.length;
   doc.setFont("helvetica", "normal");
 
   // Beschlussvorschlag (Markdown → Plaintext für PDF)
@@ -257,7 +269,7 @@ function drawAgendaItem(
       return [
         e.nameSnapshot,
         v ? optionLabel(v.optionId) : "—",
-        v ? new Date(v.updatedAt).toLocaleString("de-DE") : "—",
+        v ? formatDateTime(v.updatedAt) : "—",
       ];
     }),
   ];
@@ -266,13 +278,16 @@ function drawAgendaItem(
 
   // Ergebnis
   y = ensureSpace(doc, y, 40);
-  const ergebnisRows = [
+  const withdrawn = input.resolution.status === "zurueckgezogen";
+  const ergebnisRows = withdrawn
+    ? [["Verfahren", "Zurückgezogen – keine Auszählung"]]
+    : [
     [
       "Abgegebene Stimmen",
-      `${result.voteCount} / ${result.eligibleCount} (${result.participationPct.toFixed(1)} %)`,
+      `${result.voteCount} / ${result.eligibleCount} (${formatPercent(result.participationPct)})`,
     ],
     ["Quorum", `${top.quorumPct} % – ${result.quorumReached ? "erreicht" : "verfehlt"}`],
-    ["Mehrheit (Schwelle)", `${result.thresholdPct.toFixed(2).replace(/\.00$/, "")} %`],
+    ["Mehrheit (Schwelle)", `${formatPercent(result.thresholdPct, 2).replace(",00 %", " %")}`],
     ["Mehrheit", result.majorityReached ? "erreicht" : "verfehlt"],
     ...result.perOption.map((o) => [o.label, String(o.count)]),
   ];
@@ -366,25 +381,22 @@ function drawTable(
   doc.setFontSize(9);
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
-    y = ensureSpace(doc, y, 6);
     doc.setFont("helvetica", r === 0 ? "bold" : "normal");
+    const cellLines = row.map((cell, c) => doc.splitTextToSize(cell ?? "", (colWidths[c] ?? 30) - 2) as string[]);
+    const rowHeight = Math.max(1, ...cellLines.map((l) => l.length)) * 4 + 1;
+    y = ensureSpace(doc, y, rowHeight + 2);
     if (r === 0) {
       doc.setFillColor(248, 249, 250);
-      doc.rect(MARGIN, y - 4, PAGE_W - 2 * MARGIN, 6, "F");
+      doc.rect(MARGIN, y - 4, PAGE_W - 2 * MARGIN, rowHeight + 1, "F");
     }
     let x = MARGIN;
     for (let c = 0; c < row.length; c++) {
-      const w = colWidths[c] ?? 30;
-      const lines = doc.splitTextToSize(row[c] ?? "", w - 2);
-      doc.text(lines, x + 1, y);
-      x += w;
+      doc.text(cellLines[c], x + 1, y);
+      x += colWidths[c] ?? 30;
     }
-    y += 5;
+    y += rowHeight;
   }
   doc.setFontSize(10);
   return y;
 }
 
-function roleLabel(r: string): string {
-  return { owner: "Owner", admin: "Admin", member: "Mitglied" }[r] ?? r;
-}

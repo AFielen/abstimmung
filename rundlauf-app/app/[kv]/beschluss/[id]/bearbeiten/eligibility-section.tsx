@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { publishResolution } from "./actions";
 import type { DraftMember } from "./draft-types";
 import { Feedback, initialActionState } from "./feedback";
+import { roleLabel } from "@/lib/format";
 
 export function EligibilitySection({
   kv,
@@ -46,7 +47,19 @@ export function EligibilitySection({
         Stimmberechtigte ({selected.size} von {members.length})
       </h2>
 
-      <form action={action} className="flex flex-col gap-4">
+      <form
+        action={action}
+        onSubmit={(e) => {
+          if (
+            !confirm(
+              `Verfahren jetzt eröffnen und ${selected.size} Stimmberechtigte einladen?\n\nDanach sind TOPs, Anlagen und Frist nicht mehr änderbar; die Liste der Stimmberechtigten wird eingefroren.`,
+            )
+          ) {
+            e.preventDefault();
+          }
+        }}
+        className="flex flex-col gap-4"
+      >
         <input type="hidden" name="kv" value={kv} />
         <input type="hidden" name="resolutionId" value={resolutionId} />
         {Array.from(selected).map((id) => (
@@ -98,16 +111,16 @@ export function EligibilitySection({
                     <span className="font-medium">{m.displayName}</span>
                     <span
                       className="text-xs ml-2"
-                      style={{ color: "var(--text-light)" }}
+                      style={{ color: "#4b5563" }}
                     >
-                      {m.email} · {m.role}
+                      {m.email} · {roleLabel(m.role)}
                     </span>
                     {isInvited ? (
                       <span
                         className="text-xs ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5"
                         style={{
-                          background: "var(--drk-bg)",
-                          color: "var(--drk)",
+                          background: "var(--warning-bg)",
+                          color: "#b45309",
                         }}
                         title="Mitglied hat die KV-Einladung noch nicht angenommen"
                       >
@@ -128,7 +141,7 @@ export function EligibilitySection({
           className="drk-btn-primary"
           disabled={pending || selected.size < 2 || !hasTops}
         >
-          {pending ? "Eröffne …" : "Verfahren eröffnen und einladen"}
+          {pending ? "Wird eröffnet …" : "Verfahren eröffnen und einladen"}
         </button>
 
         {!hasTops ? (

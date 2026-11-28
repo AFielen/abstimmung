@@ -13,6 +13,7 @@ import { and, eq, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auditLog, resolutions } from "@/lib/db/schema";
 import { finalizeResolution } from "@/lib/finalize";
+import { notifyResolutionResult } from "@/lib/mail/resolution-result";
 
 async function main() {
   const now = new Date();
@@ -42,6 +43,11 @@ async function main() {
       });
       closed++;
       console.log(`[auto-close] closed ${r.id} (${r.betreff ?? "ohne Betreff"})`);
+      if (process.env.MAILJET_API_KEY) {
+        await notifyResolutionResult(r.id);
+      } else {
+        console.warn("[auto-close] MAILJET_API_KEY fehlt – keine Ergebnis-Mails");
+      }
     } catch (err) {
       console.error("[auto-close] failed", r.id, err);
     }

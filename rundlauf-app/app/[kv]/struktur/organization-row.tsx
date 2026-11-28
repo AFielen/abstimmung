@@ -48,7 +48,6 @@ export function OrganizationRow({ kv, org }: { kv: string; org: Organization }) 
         onClick={handleDelete}
         disabled={pending}
         className="drk-btn-secondary"
-        style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
       >
         Löschen
       </button>

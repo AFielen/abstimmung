@@ -1,4 +1,7 @@
-import type { z } from "zod";
+import { z } from "zod";
+
+// Deutsche Standardmeldungen für alle Zod-Validierungen (Server Actions).
+z.config(z.locales.de());
 
 // Einheitlicher Fehlerzweig nach der Eingabe-Validierung: ohne Argument die
 // generische Meldung, mit ZodError die erste Issue-Meldung (gleicher Fallback).

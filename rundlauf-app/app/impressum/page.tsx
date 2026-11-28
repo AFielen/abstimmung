@@ -1,11 +1,11 @@
-export const metadata = { title: "Impressum – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Impressum" };
 
 export default function ImpressumPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold mb-6">Impressum</h1>
       <section className="drk-card">
-        <h2 className="text-lg font-bold mb-3">Angaben gemäß § 5 TMG</h2>
+        <h2 className="text-lg font-bold mb-3">Angaben gemäß § 5 DDG</h2>
         <address className="not-italic">
           <strong>Deutsches Rotes Kreuz</strong><br />
           Kreisverband StädteRegion Aachen e.V.<br />

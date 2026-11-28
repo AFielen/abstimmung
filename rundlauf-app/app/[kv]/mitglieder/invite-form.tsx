@@ -32,6 +32,7 @@ export function InviteForm({ kv }: { kv: string }) {
 
       {state.message ? (
         <div
+          role={state.ok ? "status" : "alert"}
           className="rounded-lg p-3 text-sm"
           style={{
             background: state.ok ? "var(--success-bg)" : "var(--drk-bg)",
@@ -43,7 +44,7 @@ export function InviteForm({ kv }: { kv: string }) {
       ) : null}
 
       <button type="submit" className="drk-btn-primary" disabled={pending}>
-        {pending ? "Sende Einladung …" : "Einladung versenden"}
+        {pending ? "Einladung wird gesendet …" : "Einladung versenden"}
       </button>
     </form>
   );

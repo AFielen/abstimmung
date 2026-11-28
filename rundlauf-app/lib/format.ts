@@ -7,6 +7,31 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+// Immer deutsche Ortszeit – unabhängig von TZ des Prozesses oder Browsers.
+export function formatDateTime(d: Date | string): string {
+  return new Date(d).toLocaleString("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Berlin",
+  }) + " Uhr";
+}
+
+export function formatPercent(n: number, digits = 1): string {
+  return (
+    n.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + " %"
+  );
+}
+
+export function roleLabel(role: string): string {
+  return (
+    {
+      owner: "Inhaber",
+      admin: "Administrator",
+      member: "Gremiumsmitglied",
+    }[role] ?? role
+  );
+}
+
 export function mehrheitLabel(m: string): string {
   return (
     {
@@ -33,7 +58,7 @@ export function statusBadgeClass(s: string): string {
     {
       draft: "drk-badge-warning",
       laufend: "drk-badge-success",
-      abgeschlossen: "drk-badge-error",
+      abgeschlossen: "drk-badge-neutral",
       zurueckgezogen: "drk-badge-warning",
     }[s] ?? "drk-badge-warning"
   );

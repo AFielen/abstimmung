@@ -26,9 +26,8 @@ export function ResendAllButton({ kv, count }: { kv: string; count: number }) {
         onClick={handleClick}
         disabled={pending}
         className="drk-btn-secondary"
-        style={{ padding: "0.5rem 0.9rem", minHeight: 0 }}
       >
-        {pending ? "Sende …" : `Alle ausstehenden erneut einladen (${count})`}
+        {pending ? "Wird gesendet …" : `Alle ausstehenden erneut einladen (${count})`}
       </button>
       {feedback ? (
         <div

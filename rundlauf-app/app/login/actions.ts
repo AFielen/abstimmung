@@ -30,6 +30,12 @@ export async function requestMagicLink(
   const parsed = schema.safeParse({ email: formData.get("email") });
   if (!parsed.success) return invalidInput(parsed.error);
   const email = parsed.data.email;
+  // Rücksprungziel (z. B. Beschluss-Link aus einer Mail): nur relative Pfade.
+  const rawNext = formData.get("next");
+  const next =
+    typeof rawNext === "string" && /^\/(?!\/)/.test(rawNext) && rawNext.length <= 300
+      ? rawNext
+      : undefined;
 
   const windowStart = new Date(Date.now() - MAGIC_LINK_WINDOW_MS);
   const recent = await db
@@ -71,24 +77,33 @@ export async function requestMagicLink(
     .limit(1);
   const user = existing[0];
 
-  if (user) {
-    const { raw } = await createMagicToken({
-      email,
-      purpose: "login",
-      userId: user.id,
-    });
-    await sendLoginLink({ to: { email, name: user.name ?? undefined }, rawToken: raw });
-  } else {
-    // Erstkontakt: noch kein users-Eintrag – der entsteht erst beim Einlösen
-    // des Bestätigungslinks (app/auth/magic/[token]/route.ts). Unbestätigte
-    // Anfragen für fremde Adressen hinterlassen so keine Datensätze.
-    const { raw } = await createMagicToken({ email, purpose: "register" });
-    await sendRegisterLink({ to: { email }, rawToken: raw });
+  try {
+    if (user) {
+      const { raw } = await createMagicToken({
+        email,
+        purpose: "login",
+        userId: user.id,
+      });
+      await sendLoginLink({ to: { email, name: user.name ?? undefined }, rawToken: raw, next });
+    } else {
+      // Erstkontakt: noch kein users-Eintrag – der entsteht erst beim Einlösen
+      // des Bestätigungslinks (app/auth/magic/[token]/route.ts). Unbestätigte
+      // Anfragen für fremde Adressen hinterlassen so keine Datensätze.
+      const { raw } = await createMagicToken({ email, purpose: "register" });
+      await sendRegisterLink({ to: { email }, rawToken: raw });
+    }
+  } catch (err) {
+    console.error("[login] mail send failed", err);
+    return {
+      ok: false,
+      message:
+        "Die E-Mail konnte gerade nicht versendet werden. Bitte versuche es in ein paar Minuten noch einmal.",
+    };
   }
 
   return {
     ok: true,
-    message: "Wir haben dir einen Magic-Link geschickt. Bitte E-Mail-Postfach prüfen.",
+    message: "Wir haben dir einen Anmelde-Link geschickt. Bitte prüfe dein E-Mail-Postfach (auch den Spam-Ordner).",
     email,
   };
 }

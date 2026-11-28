@@ -40,7 +40,7 @@ export default async function StrukturPage({
   return (
     <div className="flex flex-col gap-6">
       <section className="drk-card">
-        <h2 className="text-xl font-bold mb-1">Organisationen &amp; Gremien</h2>
+        <h1 className="text-2xl font-bold mb-1">Organisationen &amp; Gremien</h1>
         <p className="text-sm" style={{ color: "var(--text-light)" }}>
           Bilde die Struktur deines Kreisverbands ab: Mutter-Verein, Tochtergesellschaften
           und deren Gremien (Präsidium, Aufsichtsrat, Beirat, …).
@@ -51,15 +51,15 @@ export default async function StrukturPage({
         <section key={org.id} className="drk-card">
           <OrganizationRow kv={kv} org={org} />
           <div className="mt-4 pl-4 border-l-2" style={{ borderColor: "var(--border)" }}>
-            <h3 className="text-sm font-bold mb-2" style={{ color: "var(--text-light)" }}>
+            <h2 className="text-sm font-bold mb-2" style={{ color: "var(--text-light)" }}>
               Gremien
-            </h3>
+            </h2>
             <ul className="flex flex-col gap-2">
               {(bodiesByOrg.get(org.id) ?? []).map((b) => (
                 <BodyRow key={b.id} kv={kv} body={b} />
               ))}
               {(bodiesByOrg.get(org.id) ?? []).length === 0 ? (
-                <li className="text-sm" style={{ color: "var(--text-muted)" }}>
+                <li className="text-sm" style={{ color: "var(--text-light)" }}>
                   Noch keine Gremien.
                 </li>
               ) : null}
@@ -78,9 +78,9 @@ export default async function StrukturPage({
 
       {(bodiesByOrg.get(null) ?? []).length > 0 ? (
         <section className="drk-card">
-          <h3 className="text-sm font-bold mb-2" style={{ color: "var(--text-light)" }}>
+          <h2 className="text-sm font-bold mb-2" style={{ color: "var(--text-light)" }}>
             Gremien ohne Organisation
-          </h3>
+          </h2>
           <ul className="flex flex-col gap-2">
             {(bodiesByOrg.get(null) ?? []).map((b) => (
               <BodyRow key={b.id} kv={kv} body={b} />
@@ -90,12 +90,12 @@ export default async function StrukturPage({
       ) : null}
 
       <section className="drk-card">
-        <h3 className="text-lg font-bold mb-3">Neue Organisation anlegen</h3>
+        <h2 className="text-lg font-bold mb-3">Neue Organisation anlegen</h2>
         <CreateOrganizationForm kv={kv} />
       </section>
 
       <section className="drk-card">
-        <h3 className="text-lg font-bold mb-3">Neues Gremium ohne Organisation</h3>
+        <h2 className="text-lg font-bold mb-3">Neues Gremium ohne Organisation</h2>
         <CreateBodyForm kv={kv} />
       </section>
     </div>

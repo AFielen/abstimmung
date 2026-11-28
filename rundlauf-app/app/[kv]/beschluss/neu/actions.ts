@@ -12,9 +12,9 @@ import { invalidInput } from "@/lib/action-helpers";
 
 const schema = z.object({
   kv: z.string().min(1),
-  bodyId: z.string().uuid("Gremium erforderlich"),
-  betreff: z.string().max(200).optional(),
-  fristEnde: z.string().min(1, "Frist erforderlich"),
+  bodyId: z.string().uuid("Bitte ein Gremium auswählen"),
+  betreff: z.string().max(200, "Der Betreff darf höchstens 200 Zeichen lang sein").optional(),
+  fristEnde: z.string().min(1, "Bitte ein Fristende angeben"),
   voteChangeMode: z.enum(["aenderbar", "fest"]),
 });
 
@@ -65,7 +65,7 @@ export async function createResolution(
   if (fristEnde.getTime() < minDate.getTime()) {
     return {
       ok: false,
-      message: `Die Frist muss mindestens ${MIN_FRIST_DAYS} Tage in der Zukunft liegen (§ 21 Abs. 6 Satzung).`,
+      message: `Die Frist muss mindestens ${MIN_FRIST_DAYS} Tage in der Zukunft liegen (Mindestfrist laut Satzung).`,
     };
   }
 

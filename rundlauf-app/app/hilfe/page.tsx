@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Hilfe – DRK Rundlaufbeschlüsse" };
+export const metadata = { title: "Hilfe" };
 
 export default function HilfePage() {
   return (
@@ -21,7 +21,7 @@ export default function HilfePage() {
         <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
           <li><a href="#was-ist" style={{ color: "var(--drk)" }}>Was ist ein Rundlaufbeschluss?</a></li>
           <li><a href="#rollen" style={{ color: "var(--drk)" }}>Rollen im System</a></li>
-          <li><a href="#anmeldung" style={{ color: "var(--drk)" }}>Anmeldung mit Magic-Link</a></li>
+          <li><a href="#anmeldung" style={{ color: "var(--drk)" }}>Anmeldung mit Anmelde-Link</a></li>
           <li><a href="#admin-setup" style={{ color: "var(--drk)" }}>Als Admin: Beschluss einrichten</a></li>
           <li><a href="#stimm-modus" style={{ color: "var(--drk)" }}>Stimm-Modus: änderbar vs. fest</a></li>
           <li><a href="#abstimmen" style={{ color: "var(--drk)" }}>Als Stimmberechtigte:r abstimmen</a></li>
@@ -51,7 +51,7 @@ export default function HilfePage() {
         </p>
         <p className="mt-3 font-semibold">Typische Merkmale:</p>
         <ul className="list-disc ml-5 mt-2 space-y-1 text-sm">
-          <li>Frist häufig mindestens 14 Tage – frei einstellbar pro Beschluss</li>
+          <li>Frist mindestens 14 Tage (Satzungsvorgabe); das Fristende wird je Verfahren festgelegt</li>
           <li>Quorum (Mindest-Beteiligung) häufig 75 % – frei einstellbar pro Tagesordnungspunkt</li>
           <li>Stimmen werden in Textform abgegeben und sind <strong>nicht anonym</strong></li>
           <li>Vollständiges Audit-Trail (Zeitstempel je Stimme, lückenlose Protokollierung)</li>
@@ -123,9 +123,9 @@ export default function HilfePage() {
 
       {/* 3. Anmeldung */}
       <section id="anmeldung" className="drk-card mb-6 fade-up">
-        <h2 className="text-xl font-bold mb-3">Anmeldung mit Magic-Link</h2>
+        <h2 className="text-xl font-bold mb-3">Anmeldung mit Anmelde-Link</h2>
         <p>
-          Statt eines Passworts nutzt das System sogenannte <strong>Magic-Links</strong>.
+          Statt eines Passworts nutzt das System <strong>Anmelde-Links</strong> (auch „Magic-Links“ genannt).
           Du gibst deine E-Mail-Adresse ein, bekommst einen einmalig nutzbaren
           Link per Mail und bist nach Klick angemeldet.
         </p>
@@ -147,8 +147,9 @@ export default function HilfePage() {
         <ol className="steps-list">
           <li>
             <div>
-              <strong>Beschluss anlegen</strong> – Titel, Einleitung, Kontext.
-              Der Status startet als <span className="drk-badge-warning">Entwurf</span>.
+              <strong>Umlaufverfahren anlegen</strong> – Gremium, Betreff, Fristende
+              (mindestens 14 Tage) und Stimm-Modus wählen. Der Status startet als{" "}
+              <span className="drk-badge-warning">Entwurf</span>.
             </div>
           </li>
           <li>
@@ -159,9 +160,9 @@ export default function HilfePage() {
           </li>
           <li>
             <div>
-              <strong>Antwort-Optionen pro TOP konfigurieren</strong> – Standard
-              ist <code>Ja</code> / <code>Nein</code> / <code>Enthaltung</code>.
-              Eigene Optionen sind möglich, z. B. für Wahlen.
+              <strong>Quorum und Mehrheit je TOP festlegen</strong> – die
+              Antwort-Optionen sind immer <code>Ja</code> / <code>Nein</code> /{" "}
+              <code>Enthaltung</code>; Enthaltungen zählen für das Quorum, nicht für die Mehrheit.
             </div>
           </li>
           <li>
@@ -264,7 +265,7 @@ export default function HilfePage() {
           So gibst du deine Stimme zu einem laufenden Beschluss ab:
         </p>
         <ol className="steps-list">
-          <li><div><strong>Einladungs-Mail öffnen</strong> und auf den Magic-Link klicken.</div></li>
+          <li><div><strong>Einladungs-Mail öffnen</strong> und auf den Anmelde-Link klicken.</div></li>
           <li><div><strong>Beschluss-Übersicht ansehen:</strong> Titel, Beschreibung, Fristende und die Liste aller Tagesordnungspunkte.</div></li>
           <li><div><strong>Anlagen sichten</strong>, falls vorhanden (z. B. PDFs prüfen).</div></li>
           <li><div><strong>Pro Tagesordnungspunkt eine Option wählen.</strong></div></li>
@@ -273,7 +274,7 @@ export default function HilfePage() {
             <div>
               <strong>Im Modus „änderbar“:</strong> Du kannst bis zum Fristende
               zurückkehren und deine Auswahl anpassen – nutze dafür einen
-              neuen Magic-Link oder bleibe eingeloggt.
+              neuen Anmelde-Link oder bleibe eingeloggt.
             </div>
           </li>
         </ol>
@@ -287,7 +288,7 @@ export default function HilfePage() {
       <section id="lebenszyklus" className="drk-card mb-6 fade-up">
         <h2 className="text-xl font-bold mb-3">Lebenszyklus eines Beschlusses</h2>
         <p className="mb-4">
-          Ein Beschluss durchläuft drei Status:
+          Ein Umlaufverfahren durchläuft vier Status:
         </p>
         <ul className="space-y-3">
           <li className="flex items-start gap-3">
@@ -305,10 +306,17 @@ export default function HilfePage() {
             </span>
           </li>
           <li className="flex items-start gap-3">
-            <span className="drk-badge-error shrink-0 mt-1">Abgeschlossen</span>
+            <span className="drk-badge-neutral shrink-0 mt-1">Abgeschlossen</span>
             <span className="text-sm">
               Verfahren beendet – automatisch bei Fristende oder manuell vorzeitig
               durch den Admin. Ergebnis ist fixiert, PDF-Protokoll abrufbar.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="drk-badge-warning shrink-0 mt-1">Zurückgezogen</span>
+            <span className="text-sm">
+              Der Admin hat das laufende Verfahren ohne Auszählung beendet, z. B. wegen
+              eines Fehlers in der Vorlage. Es wird als zurückgezogen protokolliert.
             </span>
           </li>
         </ul>
@@ -424,7 +432,7 @@ export default function HilfePage() {
             <summary className="font-semibold cursor-pointer">Was, wenn die Einladungs-Mail nicht ankommt?</summary>
             <p className="mt-2 text-sm">
               Spam-Ordner prüfen. Du kannst dich jederzeit auch über die normale
-              Login-Seite mit derselben E-Mail-Adresse einen neuen Magic-Link
+              Login-Seite mit derselben E-Mail-Adresse einen neuen Anmelde-Link
               zusenden lassen. Ansonsten bei deinem Admin melden.
             </p>
           </details>

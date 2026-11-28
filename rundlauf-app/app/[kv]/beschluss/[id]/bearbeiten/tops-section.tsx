@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { addAgendaItem, deleteAgendaItem, updateAgendaItem } from "./actions";
 import { CollapsibleMarkdown } from "../../../_components/collapsible-markdown";
@@ -91,22 +91,21 @@ function NewTopForm({
   const [state, action, pending] = useActionState(addAgendaItem, initialActionState);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // Reset only after a successful save – on a validation error the typed
+  // values must stay, otherwise the user has to start over.
+  useEffect(() => {
+    if (state.ok) formRef.current?.reset();
+  }, [state]);
+
   return (
-    <form
-      ref={formRef}
-      action={(fd) => {
-        action(fd);
-        formRef.current?.reset();
-      }}
-      className="flex flex-col gap-3"
-    >
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
       <input type="hidden" name="kv" value={kv} />
       <input type="hidden" name="resolutionId" value={resolutionId} />
       <TopFields defaultQuorum={defaultQuorum} defaultMehrheit={defaultMehrheit} />
       <Feedback state={state} />
       <div className="flex gap-2">
         <button type="submit" className="drk-btn-primary" disabled={pending}>
-          {pending ? "Lege an …" : "TOP speichern"}
+          {pending ? "Wird angelegt …" : "TOP speichern"}
         </button>
         <button type="button" className="drk-btn-secondary" onClick={onCancel}>
           Abbrechen
@@ -132,14 +131,14 @@ function TopCard({
   if (!editing) {
     return (
       <div className="rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-wide" style={{ color: "var(--text-light)" }}>
               TOP {top.ordinal}
             </div>
-            <h3 className="font-bold mt-1">{top.titel}</h3>
+            <h3 className="font-bold mt-1 break-words">{top.titel}</h3>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2">
             <button type="button" className="drk-btn-secondary" onClick={() => setEditing(true)}>
               Bearbeiten
             </button>
@@ -152,7 +151,7 @@ function TopCard({
                 className="drk-btn-secondary"
                 disabled={deletePending}
                 onClick={(e) => {
-                  if (!confirm(`TOP "${top.titel}" entfernen?`)) e.preventDefault();
+                  if (!confirm(`TOP "${top.titel}" entfernen? Zugeordnete Anlagen werden mit entfernt.`)) e.preventDefault();
                 }}
               >
                 Entfernen
@@ -219,7 +218,7 @@ function TopCard({
         <Feedback state={updateState} />
         <div className="flex gap-2">
           <button type="submit" className="drk-btn-primary" disabled={updatePending}>
-            {updatePending ? "Speichere …" : "Änderungen speichern"}
+            {updatePending ? "Wird gespeichert …" : "Änderungen speichern"}
           </button>
           <button type="button" className="drk-btn-secondary" onClick={() => setEditing(false)}>
             Abbrechen
@@ -247,11 +246,13 @@ function TopFields({
   defaultQuorum: number;
   defaultMehrheit: "simple" | "two_thirds" | "three_quarters";
 }) {
+  const uid = useId();
   return (
     <>
       <div>
-        <label className="drk-label">Titel <span style={{ color: "var(--drk)" }}>*</span></label>
+        <label className="drk-label" htmlFor={`${uid}-titel`}>Titel <span style={{ color: "var(--drk)" }}>*</span></label>
         <input
+          id={`${uid}-titel`}
           name="titel"
           required
           maxLength={200}
@@ -283,8 +284,9 @@ function TopFields({
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="drk-label">Finanzielle Auswirkungen</label>
+          <label className="drk-label" htmlFor={`${uid}-finanzen`}>Finanzielle Auswirkungen</label>
           <input
+            id={`${uid}-finanzen`}
             name="finanzielleAuswirkungen"
             defaultValue={defaultFinanzen}
             maxLength={2000}
@@ -293,8 +295,9 @@ function TopFields({
           />
         </div>
         <div>
-          <label className="drk-label">Auskunft erteilen</label>
+          <label className="drk-label" htmlFor={`${uid}-auskunft`}>Auskunft erteilen</label>
           <input
+            id={`${uid}-auskunft`}
             name="auskunftErteilen"
             defaultValue={defaultAuskunft}
             maxLength={500}
@@ -305,8 +308,9 @@ function TopFields({
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
-          <label className="drk-label">Quorum (%) <span style={{ color: "var(--drk)" }}>*</span></label>
+          <label className="drk-label" htmlFor={`${uid}-quorum`}>Quorum (%) <span style={{ color: "var(--drk)" }}>*</span></label>
           <input
+            id={`${uid}-quorum`}
             name="quorumPct"
             type="number"
             min={50}
@@ -315,14 +319,20 @@ function TopFields({
             defaultValue={defaultQuorum}
             className="drk-input"
           />
+          <p className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+            Anteil der Stimmberechtigten, die abstimmen müssen. Enthaltungen zählen mit.
+          </p>
         </div>
         <div>
-          <label className="drk-label">Erforderliche Mehrheit</label>
-          <select name="mehrheit" defaultValue={defaultMehrheit} className="drk-input">
+          <label className="drk-label" htmlFor={`${uid}-mehrheit`}>Erforderliche Mehrheit</label>
+          <select id={`${uid}-mehrheit`} name="mehrheit" defaultValue={defaultMehrheit} className="drk-input">
             <option value="simple">Einfache Mehrheit (&gt; 50 %)</option>
             <option value="two_thirds">Zwei Drittel</option>
             <option value="three_quarters">Drei Viertel</option>
           </select>
+          <p className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+            Bezogen auf Ja- und Nein-Stimmen. Enthaltungen zählen hier nicht.
+          </p>
         </div>
       </div>
     </>

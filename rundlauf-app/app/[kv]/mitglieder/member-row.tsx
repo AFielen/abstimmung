@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner",
+  owner: "Inhaber",
   admin: "Administrator",
   member: "Gremiumsmitglied",
 };
@@ -33,18 +33,33 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
 
   function handleRoleChange(newRole: string) {
     if (newRole === role) return;
+    if (
+      newRole === "admin" &&
+      !confirm(`${name ?? email} zum Administrator machen? Administratoren können Verfahren anlegen, eröffnen und Mitglieder verwalten.`)
+    ) {
+      return;
+    }
     const fd = new FormData();
     fd.set("kv", kv);
     fd.set("membershipId", membershipId);
     fd.set("role", newRole);
     startTransition(async () => {
       const r = await changeRole(null, fd);
-      setFeedback(r.ok ? null : { ok: false, message: r.message ?? "Fehler" });
+      setFeedback(
+        r.ok
+          ? { ok: true, message: `Rolle geändert: ${ROLE_LABEL[newRole] ?? newRole}` }
+          : { ok: false, message: r.message ?? "Fehler" },
+      );
     });
   }
 
   function handleRemove() {
-    if (!confirm(`${email} wirklich entfernen?`)) return;
+    if (
+      !confirm(
+        `${name ?? email} aus dem Kreisverband entfernen? Laufende Verfahren bleiben unberührt, offene Einladungslinks werden ungültig.`,
+      )
+    )
+      return;
     const fd = new FormData();
     fd.set("kv", kv);
     fd.set("membershipId", membershipId);
@@ -91,6 +106,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
 
         {canModify ? (
           <select
+            aria-label={`Rolle von ${name ?? email}`}
             value={role}
             onChange={(e) => handleRoleChange(e.target.value)}
             disabled={pending}
@@ -112,7 +128,6 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
             onClick={handleResend}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Einladung erneut senden
           </button>
@@ -124,7 +139,6 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
             onClick={handleRemove}
             disabled={pending}
             className="drk-btn-secondary"
-            style={{ padding: "0.4rem 0.8rem", minHeight: 0 }}
           >
             Entfernen
           </button>
@@ -133,6 +147,7 @@ export function MemberRow({ kv, membershipId, email, name, role, status, canModi
 
       {feedback ? (
         <div
+          role={feedback.ok ? "status" : "alert"}
           className="w-full text-sm rounded p-2"
           style={{
             background: feedback.ok ? "var(--success-bg)" : "var(--drk-bg)",

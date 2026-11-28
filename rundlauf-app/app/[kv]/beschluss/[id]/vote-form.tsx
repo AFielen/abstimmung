@@ -14,7 +14,10 @@ export function VoteForm({
   currentOptionId,
   mode,
   alreadyVoted,
+  legend,
 }: {
+  /** Sichtbare Gruppenbezeichnung der Optionen, z. B. "TOP 1: Haushalt". */
+  legend: string;
   kv: string;
   resolutionId: string;
   agendaItemId: string;
@@ -41,12 +44,27 @@ export function VoteForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (mode !== "fest") return;
+        const label = options.find((o) => o.id === selected)?.label ?? selected;
+        if (
+          !confirm(
+            `Stimme „${label}“ verbindlich abgeben?\n\nIn diesem Verfahren kann eine abgegebene Stimme nicht mehr geändert werden.`,
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+      className="flex flex-col gap-3"
+    >
       <input type="hidden" name="kv" value={kv} />
       <input type="hidden" name="resolutionId" value={resolutionId} />
       <input type="hidden" name="agendaItemId" value={agendaItemId} />
 
-      <div className="flex flex-col gap-2">
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="sr-only">Deine Stimme zu {legend}</legend>
         {options.map((o) => (
           <label
             key={o.id}
@@ -66,10 +84,11 @@ export function VoteForm({
             <span className="font-medium">{o.label}</span>
           </label>
         ))}
-      </div>
+      </fieldset>
 
       {state.message ? (
         <div
+          role={state.ok ? "status" : "alert"}
           className="rounded-lg p-3 text-sm"
           style={{
             background: state.ok ? "var(--success-bg)" : "var(--drk-bg)",
@@ -80,9 +99,18 @@ export function VoteForm({
         </div>
       ) : null}
 
-      <button type="submit" className="drk-btn-primary self-start" disabled={pending || !selected}>
+      {!selected ? (
+        <p className="text-xs" style={{ color: "var(--text-light)" }}>
+          Wähle zuerst eine Option, dann kannst du abgeben.
+        </p>
+      ) : null}
+      <button
+        type="submit"
+        className="drk-btn-primary w-full sm:w-auto sm:self-start"
+        disabled={pending || !selected}
+      >
         {pending
-          ? "Speichere …"
+          ? "Wird gespeichert …"
           : alreadyVoted
             ? "Stimme ändern"
             : mode === "fest"

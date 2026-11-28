@@ -8,6 +8,7 @@ import { MemberRow } from "./member-row";
 import { ResendAllButton } from "./resend-all-button";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Mitglieder" };
 
 export default async function MembersPage({
   params,
@@ -35,13 +36,13 @@ export default async function MembersPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Mitglieder</h1>
       <section className="drk-card">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <h2 className="text-xl font-bold">Mitglied einladen</h2>
           <Link
             href={`/${kv}/mitglieder/import`}
             className="drk-btn-secondary"
-            style={{ padding: "0.5rem 0.9rem", minHeight: 0 }}
           >
             CSV/Excel-Import
           </Link>

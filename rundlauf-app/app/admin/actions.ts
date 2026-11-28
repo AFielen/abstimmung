@@ -13,7 +13,10 @@ import { invalidInput } from "@/lib/action-helpers";
 const approveSchema = z.object({ tenantId: z.string().uuid() });
 const rejectSchema = z.object({
   tenantId: z.string().uuid(),
-  reason: z.string().min(3).max(500),
+  reason: z
+    .string()
+    .min(3, "Bitte eine Begründung mit mindestens 3 Zeichen eingeben")
+    .max(500, "Die Begründung darf höchstens 500 Zeichen lang sein"),
 });
 
 export type ModerationState = { ok: boolean; message?: string };

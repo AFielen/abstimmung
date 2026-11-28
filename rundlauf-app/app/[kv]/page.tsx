@@ -6,11 +6,12 @@ import {
   computeAgendaItemResult,
   type ResolutionResult,
 } from "@/lib/resolution";
-import { statusBadgeClass, statusLabel } from "@/lib/format";
+import { formatDateTime, statusBadgeClass, statusLabel } from "@/lib/format";
 import { requireTenantContext } from "@/lib/tenant";
 import { ResolutionStatus } from "./_components/resolution-status";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Beschlüsse" };
 
 type TopResult = {
   topId: string;
@@ -20,6 +21,8 @@ type TopResult = {
   result: ResolutionResult;
 };
 
+type MyStatus = "done" | "partial" | "pending" | "not-eligible";
+
 type ListItem = {
   id: string;
   betreff: string;
@@ -28,11 +31,14 @@ type ListItem = {
   topCount: number;
   firstTopTitel: string | null;
   topResults: TopResult[];
+  /** Eigener Stimm-Status (nur bei laufenden Verfahren gesetzt). */
+  myStatus?: MyStatus;
+  myVotedTops?: number;
 };
 
 async function loadResolutions(
   where: ReturnType<typeof and>,
-  opts: { withResults?: boolean; limit?: number } = {},
+  opts: { withResults?: boolean; limit?: number; userId?: string } = {},
 ): Promise<ListItem[]> {
   const baseQuery = db
     .select({
@@ -122,15 +128,76 @@ async function loadResolutions(
     }
   }
 
-  return rows.map((r) => ({
-    id: r.id,
-    betreff: r.betreff,
-    status: r.status,
-    fristEnde: r.fristEnde,
-    topCount: counts.get(r.id) ?? 0,
-    firstTopTitel: firstTitel.get(r.id) ?? null,
-    topResults: resultsByResolution.get(r.id) ?? [],
-  }));
+  // Eigener Stimm-Status: stimmberechtigt? wie viele TOPs schon abgegeben?
+  const eligibleFor = new Set<string>();
+  const myVotes = new Map<string, number>();
+  if (opts.userId) {
+    const ev = await db
+      .select({ resolutionId: eligibleVoters.resolutionId })
+      .from(eligibleVoters)
+      .where(and(inArray(eligibleVoters.resolutionId, ids), eq(eligibleVoters.userId, opts.userId)));
+    for (const e of ev) eligibleFor.add(e.resolutionId);
+    if (topsRows.length > 0) {
+      const topToResolution = new Map(topsRows.map((t) => [t.id, t.resolutionId]));
+      const mine = await db
+        .select({ agendaItemId: votes.agendaItemId })
+        .from(votes)
+        .where(
+          and(
+            inArray(votes.agendaItemId, topsRows.map((t) => t.id)),
+            eq(votes.userId, opts.userId),
+          ),
+        );
+      for (const v of mine) {
+        const rid = topToResolution.get(v.agendaItemId);
+        if (rid) myVotes.set(rid, (myVotes.get(rid) ?? 0) + 1);
+      }
+    }
+  }
+
+  return rows.map((r) => {
+    const topCount = counts.get(r.id) ?? 0;
+    const voted = myVotes.get(r.id) ?? 0;
+    let myStatus: MyStatus | undefined;
+    if (opts.userId) {
+      myStatus = !eligibleFor.has(r.id)
+        ? "not-eligible"
+        : topCount > 0 && voted >= topCount
+          ? "done"
+          : voted > 0
+            ? "partial"
+            : "pending";
+    }
+    return {
+      id: r.id,
+      betreff: r.betreff,
+      status: r.status,
+      fristEnde: r.fristEnde,
+      topCount,
+      firstTopTitel: firstTitel.get(r.id) ?? null,
+      topResults: resultsByResolution.get(r.id) ?? [],
+      myStatus,
+      myVotedTops: voted,
+    };
+  });
+}
+
+function MyStatusBadge({ item }: { item: ListItem }) {
+  if (!item.myStatus) return null;
+  switch (item.myStatus) {
+    case "done":
+      return <span className="drk-badge-success">Deine Stimme ist abgegeben</span>;
+    case "partial":
+      return (
+        <span className="drk-badge-warning">
+          Deine Stimme fehlt noch bei {item.topCount - (item.myVotedTops ?? 0)} von {item.topCount} TOPs
+        </span>
+      );
+    case "pending":
+      return <span className="drk-badge-warning">Deine Stimme fehlt noch</span>;
+    default:
+      return <span className="drk-badge-neutral">Du bist hier nicht stimmberechtigt</span>;
+  }
 }
 
 export default async function TenantDashboard({
@@ -144,7 +211,7 @@ export default async function TenantDashboard({
   const [running, drafts, closed] = await Promise.all([
     loadResolutions(
       and(eq(resolutions.tenantId, ctx.tenant.id), eq(resolutions.status, "laufend")),
-      { withResults: true },
+      { withResults: true, userId: ctx.user.id },
     ),
     ctx.isAdmin
       ? loadResolutions(
@@ -163,6 +230,7 @@ export default async function TenantDashboard({
 
   return (
     <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Umlaufverfahren</h1>
       <Section title={`Laufend (${running.length})`}>
         {running.length === 0 ? (
           <Empty>Aktuell keine laufenden Umlaufverfahren.</Empty>
@@ -233,10 +301,15 @@ function ResolutionList({
             >
               <div className="min-w-0">
                 <div className="font-bold break-words">{title}</div>
-                <div className="text-xs mt-1" style={{ color: "var(--text-light)" }}>
+                <div className="text-sm mt-1" style={{ color: "var(--text-light)" }}>
                   {r.topCount} TOP{r.topCount === 1 ? "" : "s"} · Frist:{" "}
-                  {new Date(r.fristEnde).toLocaleString("de-DE")}
+                  {formatDateTime(r.fristEnde)}
                 </div>
+                {r.status === "laufend" ? (
+                  <div className="mt-2">
+                    <MyStatusBadge item={r} />
+                  </div>
+                ) : null}
               </div>
               <span className={statusBadgeClass(r.status)}>
                 {statusLabel(r.status)}

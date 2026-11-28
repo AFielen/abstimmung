@@ -102,6 +102,7 @@ async function inviteUserToTenant(opts: {
   await sendInviteLink({
     to: { email, name: user.name ?? undefined },
     inviterName: ctx.user.name ?? ctx.user.email,
+    inviterEmail: ctx.user.email,
     tenantName: ctx.tenant.name,
     rawToken: raw,
   });
@@ -113,9 +114,9 @@ async function inviteUserToTenant(opts: {
 
 const inviteSchema = z.object({
   kv: z.string().min(1),
-  email: z.string().email().transform((v) => v.trim().toLowerCase()),
+  email: z.string().email("Bitte eine gültige E-Mail-Adresse eingeben, z. B. name@beispiel.de").transform((v) => v.trim().toLowerCase()),
   role: z.enum(["admin", "member"]),
-  name: z.string().max(120).optional(),
+  name: z.string().max(120, "Der Name darf höchstens 120 Zeichen lang sein").optional(),
 });
 
 export type InviteState = { ok: boolean; message?: string };
@@ -351,7 +352,7 @@ export async function previewMemberImport(
     existingByEmail.set(e.email.toLowerCase(), e.status);
   }
 
-  const emailSchema = z.string().email();
+  const emailSchema = z.string().email("Bitte eine gültige E-Mail-Adresse eingeben, z. B. name@beispiel.de");
   const ownEmail = ctx.user.email.toLowerCase();
   const seenInFile = new Set<string>();
   const rows: ImportPreviewRow[] = [];
@@ -390,8 +391,8 @@ export async function previewMemberImport(
 }
 
 const confirmRowSchema = z.object({
-  email: z.string().email(),
-  name: z.string().max(120).optional(),
+  email: z.string().email("Bitte eine gültige E-Mail-Adresse eingeben, z. B. name@beispiel.de"),
+  name: z.string().max(120, "Der Name darf höchstens 120 Zeichen lang sein").optional(),
   role: z.enum(["admin", "member"]),
 });
 
